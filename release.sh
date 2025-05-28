@@ -88,10 +88,6 @@ cargo doc --no-deps --all-features
 info "Testing examples..."
 find examples -name "*.rs" -exec basename {} .rs \; | xargs -n1 cargo run --example > /dev/null
 
-# Generate documentation
-info "Generating project documentation..."
-cargo run --example generate_docs
-
 # Build release
 info "Building release..."
 cargo build --release
@@ -103,7 +99,33 @@ git commit -m "chore: bump version to $NEW_VERSION"
 
 # Create git tag
 info "Creating git tag..."
-git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
+if git tag -l "v$NEW_VERSION" | grep -q "v$NEW_VERSION"; then
+    warning "Tag v$NEW_VERSION already exists!"
+    echo -n "Do you want to delete the existing tag and recreate it? (y/N): "
+    read DELETE_TAG
+    
+    if [ "$DELETE_TAG" = "y" ] || [ "$DELETE_TAG" = "Y" ]; then
+        info "Deleting existing local tag..."
+        git tag -d "v$NEW_VERSION"
+        
+        info "Deleting existing remote tag..."
+        if git ls-remote --tags origin | grep -q "refs/tags/v$NEW_VERSION"; then
+            git push origin --delete "v$NEW_VERSION"
+            success "Remote tag deleted successfully"
+        else
+            info "Remote tag does not exist, skipping remote deletion"
+        fi
+        
+        info "Creating new tag..."
+        git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
+        success "New tag v$NEW_VERSION created"
+    else
+        error "Cannot proceed with existing tag. Please choose a different version or delete the tag manually."
+    fi
+else
+    git tag -a "v$NEW_VERSION" -m "Release version $NEW_VERSION"
+    success "Tag v$NEW_VERSION created"
+fi
 
 # Show what will be pushed
 info "The following will be pushed:"
