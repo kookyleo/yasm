@@ -1,0 +1,21 @@
+[package]
+name = "yasm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Examples
+[[example]]
+name = "basic_demo"
+path = "examples/basic_demo.rs"
+
+[[example]]
+name = "advanced_usage"
+path = "examples/advanced_usage.rs"
+
+[[example]]
+name = "generate_docs"
+path = "examples/generate_docs.rs"

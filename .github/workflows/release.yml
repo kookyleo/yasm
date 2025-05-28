@@ -1,0 +1,172 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # First run tests to ensure code quality
+  test:
+    name: Test before release
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+    
+    - name: Run clippy
+      run: cargo clippy --all-targets --all-features -- -D warnings
+    
+    - name: Run tests
+      run: cargo test --verbose
+    
+    - name: Run doc tests
+      run: cargo test --doc
+
+  # Publish to crates.io
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-publish-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Verify tag matches Cargo.toml version
+      run: |
+        TAG_VERSION=${GITHUB_REF#refs/tags/v}
+        CARGO_VERSION=$(grep '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+        echo "Tag version: $TAG_VERSION"
+        echo "Cargo.toml version: $CARGO_VERSION"
+        if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+          echo "Error: Tag version ($TAG_VERSION) does not match Cargo.toml version ($CARGO_VERSION)"
+          exit 1
+        fi
+    
+    - name: Build package
+      run: cargo build --release
+    
+    - name: Package
+      run: cargo package
+    
+    - name: Publish to crates.io
+      run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }}
+
+  # Create GitHub Release
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [test, publish]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Get tag
+      id: tag
+      run: |
+        echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Build Changelog
+      id: changelog
+      uses: mikepenz/release-changelog-builder-action@v5
+      with:
+        configurationJson: |
+          {
+            "template": "#{{CHANGELOG}}\n\n## 🔧 Other Changes\n#{{UNCATEGORIZED}}",
+            "categories": [
+              {
+                "title": "## 🚀 Features",
+                "labels": ["feature", "feat", "enhancement"]
+              },
+              {
+                "title": "## 🐛 Bug Fixes", 
+                "labels": ["bug", "fix", "bugfix"]
+              },
+              {
+                "title": "## 📚 Documentation",
+                "labels": ["documentation", "docs"]
+              },
+              {
+                "title": "## 🔧 Maintenance",
+                "labels": ["maintenance", "chore", "ci", "build"]
+              },
+              {
+                "title": "## 📦 Dependencies",
+                "labels": ["dependencies", "deps"]
+              }
+            ],
+            "pr_template": "- #{{TITLE}} (#{{NUMBER}})",
+            "empty_template": "- No changes",
+            "max_pull_requests": 200,
+            "max_back_track_time_days": 365
+          }
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        name: Release ${{ steps.tag.outputs.tag }}
+        body: |
+          # YASM ${{ steps.tag.outputs.tag }}
+          
+          ${{ steps.changelog.outputs.changelog }}
+          
+          ## 📦 Installation
+          
+          Add this to your `Cargo.toml`:
+          
+          ```toml
+          [dependencies]
+          yasm = "${{ steps.tag.outputs.version }}"
+          ```
+          
+          ## 📖 Documentation
+          
+          - [API Documentation](https://docs.rs/yasm/${{ steps.tag.outputs.version }})
+          - [Crates.io](https://crates.io/crates/yasm)
+          
+          ## 🔗 Links
+          
+          - [GitHub Repository](https://github.com/kookyleo/yasm)
+          - [Release Notes](https://github.com/kookyleo/yasm/releases)
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
