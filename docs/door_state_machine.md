@@ -1,30 +1,30 @@
-# 门状态机
+# Door State Machine
 
-这是一个简单的门状态机，演示了门的基本操作：开门、关门和锁门。
+This is a simple door state machine that demonstrates basic door operations: opening, closing, and locking.
 
-## 状态图
+## State Diagram
 
 ```mermaid
 stateDiagram-v2
     [*] --> Closed
-    Closed --> Open : OpenDoor
     Locked --> Closed : Unlock
+    Closed --> Open : OpenDoor
     Open --> Closed : CloseDoor
     Closed --> Locked : Lock
 ```
 
-## 状态说明
+## State Descriptions
 
-- **Closed**: 门关闭状态，可以开门或锁门
-- **Open**: 门打开状态，只能关门
-- **Locked**: 门锁定状态，只能解锁
+- **Closed**: Door is closed, can be opened or locked
+- **Open**: Door is open, can only be closed
+- **Locked**: Door is locked, can only be unlocked
 
-## 输入说明
+## Input Descriptions
 
-- **OpenDoor**: 开门操作
-- **CloseDoor**: 关门操作
-- **Lock**: 锁门操作
-- **Unlock**: 解锁操作
+- **OpenDoor**: Open door operation
+- **CloseDoor**: Close door operation
+- **Lock**: Lock door operation
+- **Unlock**: Unlock door operation
 
 # State Transition Table
 
@@ -35,7 +35,7 @@ stateDiagram-v2
 | Open | CloseDoor | Closed |
 | Locked | Unlock | Closed |
 
-## 使用示例
+## Usage Example
 
 ```rust
 use yasm::*;
@@ -43,15 +43,15 @@ use yasm::*;
 let mut door = StateMachineInstance::<door::DoorStateMachine>::new();
 assert_eq!(*door.current_state(), door::State::Closed);
 
-// 开门
+// Open door
 door.transition(door::Input::OpenDoor).unwrap();
 assert_eq!(*door.current_state(), door::State::Open);
 
-// 关门
+// Close door
 door.transition(door::Input::CloseDoor).unwrap();
 assert_eq!(*door.current_state(), door::State::Closed);
 
-// 锁门
+// Lock door
 door.transition(door::Input::Lock).unwrap();
 assert_eq!(*door.current_state(), door::State::Locked);
 ```

@@ -1,35 +1,35 @@
-# 订单处理状态机
+# Order Processing State Machine
 
-这是一个订单处理状态机，演示了电商订单的完整生命周期。
+This is an order processing state machine that demonstrates the complete lifecycle of an e-commerce order.
 
-## 状态图
+## State Diagram
 
 ```mermaid
 stateDiagram-v2
     [*] --> Created
     Shipped --> Cancelled : Cancel
-    Paid --> Shipped : Ship
     Created --> Cancelled : Cancel
-    Created --> Paid : Pay
     Paid --> Cancelled : Refund
+    Created --> Paid : Pay
+    Paid --> Shipped : Ship
     Shipped --> Delivered : Deliver
 ```
 
-## 状态说明
+## State Descriptions
 
-- **Created**: 订单已创建，等待支付
-- **Paid**: 订单已支付，等待发货
-- **Shipped**: 订单已发货，在途中
-- **Delivered**: 订单已送达，交易完成
-- **Cancelled**: 订单已取消
+- **Created**: Order has been created, waiting for payment
+- **Paid**: Order has been paid, waiting for shipment
+- **Shipped**: Order has been shipped, in transit
+- **Delivered**: Order has been delivered, transaction complete
+- **Cancelled**: Order has been cancelled
 
-## 输入说明
+## Input Descriptions
 
-- **Pay**: 支付订单
-- **Ship**: 发货
-- **Deliver**: 确认送达
-- **Cancel**: 取消订单
-- **Refund**: 申请退款
+- **Pay**: Pay for the order
+- **Ship**: Ship the order
+- **Deliver**: Confirm delivery
+- **Cancel**: Cancel the order
+- **Refund**: Request a refund
 
 # State Transition Table
 
@@ -42,27 +42,27 @@ stateDiagram-v2
 | Shipped | Deliver | Delivered |
 | Shipped | Cancel | Cancelled |
 
-## 业务流程
+## Business Processes
 
-### 正常流程
-1. 订单创建 (Created)
-2. 用户支付 (Pay) → 已支付 (Paid)
-3. 商家发货 (Ship) → 已发货 (Shipped)
-4. 确认送达 (Deliver) → 已送达 (Delivered)
+### Normal Flow
+1. Order created (Created)
+2. User pays (Pay) → Paid
+3. Merchant ships (Ship) → Shipped
+4. Delivery confirmed (Deliver) → Delivered
 
-### 取消流程
-- 创建后直接取消: Created → (Cancel) → Cancelled
-- 支付后申请退款: Paid → (Refund) → Cancelled
-- 发货后取消: Shipped → (Cancel) → Cancelled
+### Cancellation Flow
+- Direct cancellation after creation: Created → (Cancel) → Cancelled
+- Refund after payment: Paid → (Refund) → Cancelled
+- Cancellation after shipping: Shipped → (Cancel) → Cancelled
 
-## 使用示例
+## Usage Example
 
 ```rust
 use yasm::*;
 
 let mut order = StateMachineInstance::<order::OrderStateMachine>::new();
 
-// 正常订单流程
+// Normal order flow
 order.transition(order::Input::Pay).unwrap();
 order.transition(order::Input::Ship).unwrap();
 order.transition(order::Input::Deliver).unwrap();

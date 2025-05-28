@@ -86,9 +86,7 @@ cargo doc --no-deps --all-features
 
 # Test examples
 info "Testing examples..."
-cargo run --example basic_demo > /dev/null
-cargo run --example advanced_usage > /dev/null
-cargo run --example generate_docs > /dev/null
+find examples -name "*.rs" -exec basename {} .rs \; | xargs -n1 cargo run --example > /dev/null
 
 # Generate documentation
 info "Generating project documentation..."
