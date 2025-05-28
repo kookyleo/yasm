@@ -7,9 +7,9 @@ This is a simple door state machine that demonstrates basic door operations: ope
 ```mermaid
 stateDiagram-v2
     [*] --> Closed
+    Locked --> Closed : Unlock
     Closed --> Locked : Lock
     Open --> Closed : CloseDoor
-    Locked --> Closed : Unlock
     Closed --> Open : OpenDoor
 ```
 
