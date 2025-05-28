@@ -73,7 +73,7 @@ fn demo_door_state_machine() {
     println!("\nTrying to open door...");
     match door_sm.transition(door::Input::OpenDoor) {
         Ok(_) => println!("✅ Success! Current state: {:?}", door_sm.current_state()),
-        Err(e) => println!("❌ Failed: {}", e),
+        Err(e) => println!("❌ Failed: {e}"),
     }
 
     println!("\nCurrent valid inputs: {:?}", door_sm.valid_inputs());
@@ -81,19 +81,19 @@ fn demo_door_state_machine() {
     println!("\nTrying to lock door (should fail because door is open)...");
     match door_sm.transition(door::Input::Lock) {
         Ok(_) => println!("✅ Success! Current state: {:?}", door_sm.current_state()),
-        Err(e) => println!("❌ Failed: {}", e),
+        Err(e) => println!("❌ Failed: {e}"),
     }
 
     println!("\nClosing door...");
     match door_sm.transition(door::Input::CloseDoor) {
         Ok(_) => println!("✅ Success! Current state: {:?}", door_sm.current_state()),
-        Err(e) => println!("❌ Failed: {}", e),
+        Err(e) => println!("❌ Failed: {e}"),
     }
 
     println!("\nLocking door...");
     match door_sm.transition(door::Input::Lock) {
         Ok(_) => println!("✅ Success! Current state: {:?}", door_sm.current_state()),
-        Err(e) => println!("❌ Failed: {}", e),
+        Err(e) => println!("❌ Failed: {e}"),
     }
 
     println!("\nTransition history: {:?}", door_sm.history());
@@ -118,7 +118,7 @@ fn demo_order_state_machine() {
         println!("\n{}: {:?} -> ", description, order_sm.current_state());
         match order_sm.transition(input) {
             Ok(_) => println!("✅ {:?}", order_sm.current_state()),
-            Err(e) => println!("❌ {}", e),
+            Err(e) => println!("❌ {e}"),
         }
     }
 
@@ -134,7 +134,7 @@ fn demo_order_state_machine() {
     println!("\nRequesting refund...");
     match order2.transition(order::Input::Refund) {
         Ok(_) => println!("✅ Refund successful! State: {:?}", order2.current_state()),
-        Err(e) => println!("❌ Refund failed: {}", e),
+        Err(e) => println!("❌ Refund failed: {e}"),
     }
 }
 

@@ -1,7 +1,7 @@
 # YASM (Yet Another State Machine)
 
 [![CI](https://github.com/kookyleo/yasm/workflows/CI/badge.svg)](https://github.com/kookyleo/yasm/actions)
-[![codecov](https://codecov.io/github/kookyleo/yasm/graph/badge.svg?token=140335f4-3257-4418-8e47-12b950058bc1)](https://codecov.io/github/kookyleo/yasm)
+[![codecov](https://codecov.io/gh/kookyleo/yasm/graph/badge.svg?token=mtxTMfIqih)](https://codecov.io/gh/kookyleo/yasm)
 [![Crates.io](https://img.shields.io/crates/v/yasm.svg)](https://crates.io/crates/yasm)
 [![Documentation](https://docs.rs/yasm/badge.svg)](https://docs.rs/yasm)
 [![License](https://img.shields.io/crates/l/yasm.svg)](https://github.com/kookyleo/yasm#license)

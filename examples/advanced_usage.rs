@@ -130,7 +130,7 @@ fn demo_game_character() {
                 println!("✅ {:?}", character.current_state());
                 println!("   Available actions: {:?}", character.valid_inputs());
             }
-            Err(e) => println!("❌ {}", e),
+            Err(e) => println!("❌ {e}"),
         }
     }
 }
@@ -162,9 +162,9 @@ fn analyze_state_machines() {
     for state in &all_states {
         let valid_inputs = network::NetworkConnection::valid_inputs(state);
         if valid_inputs.is_empty() {
-            println!("- {:?} is a terminal state", state);
+            println!("- {state:?} is a terminal state");
         } else {
-            println!("- {:?} has {} available inputs", state, valid_inputs.len());
+            println!("- {state:?} has {} available inputs", valid_inputs.len());
         }
     }
 
