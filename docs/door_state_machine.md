@@ -8,9 +8,9 @@ This is a simple door state machine that demonstrates basic door operations: ope
 stateDiagram-v2
     [*] --> Closed
     Closed --> Open : OpenDoor
-    Closed --> Locked : Lock
-    Open --> Closed : CloseDoor
     Locked --> Closed : Unlock
+    Open --> Closed : CloseDoor
+    Closed --> Locked : Lock
 ```
 
 ## State Descriptions
