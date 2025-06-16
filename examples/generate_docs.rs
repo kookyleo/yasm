@@ -67,7 +67,7 @@ fn main() -> std::io::Result<()> {
     println!("📚 Generating state machine documentation...\n");
 
     // Create output directory
-    fs::create_dir_all("docs")?;
+    fs::create_dir_all("examples/docs")?;
 
     // Generate door state machine documentation
     generate_door_docs()?;
@@ -80,12 +80,12 @@ fn main() -> std::io::Result<()> {
 
     println!("✅ Documentation generation complete! Check the docs/ directory");
     println!("\nGenerated files:");
-    println!("- docs/door_state_machine.md");
-    println!("- docs/order_state_machine.md");
-    println!("- docs/door_state_machine.mermaid");
-    println!("- docs/order_state_machine.mermaid");
-    println!("- docs/server_state_machine.md");
-    println!("- docs/server_state_machine.mermaid");
+    println!("- examples/docs/door_state_machine.md");
+    println!("- examples/docs/order_state_machine.md");
+    println!("- examples/docs/door_state_machine.mermaid");
+    println!("- examples/docs/order_state_machine.mermaid");
+    println!("- examples/docs/server_state_machine.md");
+    println!("- examples/docs/server_state_machine.mermaid");
 
     Ok(())
 }
@@ -95,7 +95,7 @@ fn generate_door_docs() -> std::io::Result<()> {
 
     // Generate Mermaid diagram
     let mermaid = StateMachineDoc::<door::DoorStateMachine>::generate_mermaid();
-    fs::write("docs/door_state_machine.mermaid", &mermaid)?;
+    fs::write("examples/docs/door_state_machine.mermaid", &mermaid)?;
 
     // Generate complete Markdown documentation
     let mut doc = String::new();
@@ -137,7 +137,7 @@ fn generate_door_docs() -> std::io::Result<()> {
     doc.push_str("assert_eq!(*door.current_state(), door::State::Locked);\n");
     doc.push_str("```\n");
 
-    fs::write("docs/door_state_machine.md", doc)?;
+    fs::write("examples/docs/door_state_machine.md", doc)?;
 
     Ok(())
 }
@@ -147,7 +147,7 @@ fn generate_order_docs() -> std::io::Result<()> {
 
     // Generate Mermaid diagram
     let mermaid = StateMachineDoc::<order::OrderStateMachine>::generate_mermaid();
-    fs::write("docs/order_state_machine.mermaid", &mermaid)?;
+    fs::write("examples/docs/order_state_machine.mermaid", &mermaid)?;
 
     // Generate complete Markdown documentation
     let mut doc = String::new();
@@ -199,7 +199,7 @@ fn generate_order_docs() -> std::io::Result<()> {
     doc.push_str("assert_eq!(*order.current_state(), order::State::Delivered);\n");
     doc.push_str("```\n");
 
-    fs::write("docs/order_state_machine.md", doc)?;
+    fs::write("examples/docs/order_state_machine.md", doc)?;
 
     Ok(())
 }
@@ -209,7 +209,7 @@ fn generate_server_docs() -> std::io::Result<()> {
 
     // Generate Mermaid diagram
     let mermaid = StateMachineDoc::<server::ServerStateMachine>::generate_mermaid();
-    fs::write("docs/server_state_machine.mermaid", &mermaid)?;
+    fs::write("examples/docs/server_state_machine.mermaid", &mermaid)?;
 
     // Generate complete Markdown documentation
     let mut doc = String::new();
@@ -279,7 +279,7 @@ fn generate_server_docs() -> std::io::Result<()> {
     doc.push_str("assert_eq!(*server.current_state(), server::State::Pending);\n");
     doc.push_str("```\n");
 
-    fs::write("docs/server_state_machine.md", doc)?;
+    fs::write("examples/docs/server_state_machine.md", doc)?;
 
     Ok(())
 }

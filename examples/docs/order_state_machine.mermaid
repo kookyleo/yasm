@@ -1,8 +1,8 @@
 stateDiagram-v2
     [*] --> Created
+    Created --> Paid : Pay
     Created --> Cancelled : Cancel
     Paid --> Shipped : Ship
-    Created --> Paid : Pay
-    Shipped --> Cancelled : Cancel
     Shipped --> Delivered : Deliver
     Paid --> Cancelled : Refund
+    Shipped --> Cancelled : Cancel
