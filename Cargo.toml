@@ -1,6 +1,6 @@
 [package]
 name = "yasm"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "A simple Rust state machine library focused on usability and visualization"
 license = "MIT"

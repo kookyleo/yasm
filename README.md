@@ -15,6 +15,8 @@ A simple and powerful Rust state machine library focused on usability and visual
 - 🔍 **Query Functions**: Rich state machine query and analysis capabilities
 - 📝 **Documentation Generation**: Automatically generate state transition tables and documentation
 - 🛡️ **Type Safety**: Leverage Rust's type system to ensure correct state transitions
+- 🔧 **Hidden Operations**: Support underscore-prefixed inputs that don't appear in documentation
+- 📈 **Performance Optimization**: Support history size limits to prevent memory issues
 
 ## Quick Start
 
@@ -63,8 +65,11 @@ mod door {
 ### Using State Machine
 
 ```rust
-// Create state machine instance
+// Create state machine instance (default history limit: 512 entries)
 let mut door = StateMachineInstance::<door::DoorStateMachine>::new();
+
+// Create instance with custom history size limit
+let mut door_limited = StateMachineInstance::<door::DoorStateMachine>::with_max_history(100);
 
 // Check current state
 println!("Current state: {:?}", door.current_state()); // Closed
@@ -76,9 +81,34 @@ println!("Valid inputs: {:?}", door.valid_inputs()); // [OpenDoor, Lock]
 door.transition(door::Input::OpenDoor).unwrap();
 println!("New state: {:?}", door.current_state()); // Open
 
-// View transition history
-println!("History: {:?}", door.history());
+// View transition history (using efficient ring buffer)
+println!("History count: {}", door.history().len());
+println!("Max history size: {}", door.max_history_size()); // 512
 ```
+
+### Hidden Operations (Underscore-prefixed Inputs)
+
+Inputs starting with underscore won't appear in generated documentation but remain fully functional:
+
+```rust
+define_state_machine! {
+    name: ServerStateMachine,
+    states: { Active, Maintenance },
+    inputs: { Maintain, Restore, _Debug, _EditDescription },
+    initial: Active,
+    transitions: {
+        Active + Maintain => Maintenance,
+        Maintenance + Restore => Active,
+        // Hidden operations: won't appear in docs but work normally
+        Active + _Debug => Active,
+        Maintenance + _Debug => Maintenance,
+        Active + _EditDescription => Active,
+        Maintenance + _EditDescription => Maintenance
+    }
+}
+```
+
+Generated documentation will only show `Maintain` and `Restore`, while `_Debug` and `_EditDescription` won't appear in state diagrams and transition tables.
 
 ### Query Functions
 
@@ -197,12 +227,14 @@ Core trait defining state machine behavior, including states, inputs, and transi
 Runtime instance of a state machine that can execute transitions and record history.
 
 Main methods:
-- `new()`: Create new instance
+- `new()`: Create new instance (default history limit: 512 entries)
+- `with_max_history(size)`: Create instance with custom history size limit
 - `current_state()`: Get current state
 - `valid_inputs()`: Get valid inputs for current state
 - `can_accept(input)`: Check if input is valid
 - `transition(input)`: Execute state transition
-- `history()`: Get transition history
+- `history()`: Get transition history (ring buffer)
+- `max_history_size()`: Get maximum history size
 
 ### Query Tools
 
@@ -229,6 +261,7 @@ Main methods:
 2. **Type Safety**: Leverage Rust's type system to prevent invalid state transitions
 3. **Extensible**: Design allows for future additions (non-deterministic transitions, conditional transitions, etc.)
 4. **Visualization**: Built-in documentation generation for better understanding and debugging
+5. **Performance Consideration**: Use ring buffer and default history limits for efficient performance
 
 ## Future Plans
 
@@ -241,4 +274,4 @@ Main methods:
 
 ## License
 
-MIT License 
+MIT License

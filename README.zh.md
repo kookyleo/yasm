@@ -15,6 +15,8 @@
 - 🔍 **查询功能**: 提供丰富的状态机查询和分析功能
 - 📝 **文档生成**: 自动生成状态转换表和文档
 - 🛡️ **类型安全**: 利用 Rust 的类型系统确保状态转换的正确性
+- 🔧 **隐藏操作**: 支持以下划线开头的隐藏输入，不会出现在文档中
+- 📈 **性能优化**: 支持历史记录长度限制，避免内存溢出
 
 ## 快速开始
 
@@ -63,8 +65,11 @@ mod door {
 ### 使用状态机
 
 ```rust
-// 创建状态机实例
+// 创建状态机实例（默认历史记录限制为 512 条）
 let mut door = StateMachineInstance::<door::DoorStateMachine>::new();
+
+// 创建带自定义历史记录长度限制的实例
+let mut door_limited = StateMachineInstance::<door::DoorStateMachine>::with_max_history(100);
 
 // 查看当前状态
 println!("当前状态: {:?}", door.current_state()); // Closed
@@ -76,9 +81,34 @@ println!("可接受的输入: {:?}", door.valid_inputs()); // [OpenDoor, Lock]
 door.transition(door::Input::OpenDoor).unwrap();
 println!("新状态: {:?}", door.current_state()); // Open
 
-// 查看转换历史
-println!("历史: {:?}", door.history());
+// 查看转换历史（使用高效的环形缓冲区）
+println!("历史记录数量: {}", door.history().len());
+println!("最大历史记录: {}", door.max_history_size()); // 512
 ```
+
+### 隐藏操作（下划线开头输入）
+
+以下划线开头的输入操作不会出现在生成的文档中，但仍然可以正常使用：
+
+```rust
+define_state_machine! {
+    name: ServerStateMachine,
+    states: { Active, Maintenance },
+    inputs: { Maintain, Restore, _Debug, _EditDescription },
+    initial: Active,
+    transitions: {
+        Active + Maintain => Maintenance,
+        Maintenance + Restore => Active,
+        // 隐藏操作：不会在文档中显示，但功能正常
+        Active + _Debug => Active,
+        Maintenance + _Debug => Maintenance,
+        Active + _EditDescription => Active,
+        Maintenance + _EditDescription => Maintenance
+    }
+}
+```
+
+生成的文档将只显示 `Maintain` 和 `Restore`，而 `_Debug` 和 `_EditDescription` 不会出现在状态图和转换表中。
 
 ### 查询功能
 
@@ -158,6 +188,53 @@ cargo run --example advanced_usage
 ```bash
 cargo run --example generate_docs
 ```
+
+## API 文档
+
+### 核心 Trait
+
+#### `StateMachine`
+定义状态机行为的核心 trait，包括状态、输入和转换逻辑。
+
+#### `StateMachineInstance<SM>`
+状态机的运行时实例，可以执行转换并记录历史。
+
+主要方法：
+- `new()`: 创建新实例（默认历史记录限制 512 条）
+- `with_max_history(size)`: 创建带自定义历史记录长度限制的实例
+- `current_state()`: 获取当前状态
+- `valid_inputs()`: 获取当前状态的有效输入
+- `can_accept(input)`: 检查输入是否有效
+- `transition(input)`: 执行状态转换
+- `history()`: 获取转换历史（环形缓冲区）
+- `max_history_size()`: 获取历史记录最大长度
+
+### 查询工具
+
+#### `StateMachineQuery<SM>`
+提供状态机查询功能的工具类。
+
+主要方法：
+- `reachable_states(from)`: 获取从指定状态可达的所有状态
+- `states_leading_to(target)`: 获取可以到达目标状态的所有状态
+- `has_path(from, to)`: 检查两个状态之间是否存在路径
+
+### 文档生成
+
+#### `StateMachineDoc<SM>`
+用于生成状态机文档的工具类。
+
+主要方法：
+- `generate_mermaid()`: 生成 Mermaid 格式的状态图
+- `generate_transition_table()`: 生成 Markdown 格式的状态转换表
+
+## 设计原则
+
+1. **MVP 优先**: 当前版本专注于核心功能，保持简单易用
+2. **类型安全**: 利用 Rust 的类型系统防止无效的状态转换
+3. **可扩展**: 设计允许未来添加更多功能（非确定性转换、条件转换等）
+4. **可视化**: 内置文档生成功能，便于理解和调试
+5. **性能考虑**: 使用环形缓冲区和默认历史限制，确保高效性能
 
 ## 项目结构
 

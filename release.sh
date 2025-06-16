@@ -76,6 +76,10 @@ cargo test
 info "Running clippy..."
 cargo clippy --all-targets --all-features -- -D warnings
 
+# Run clippy in nightly
+info "Running clippy in nightly..."
+cargo +nightly clippy --all-targets --all-features -- -D warnings
+
 # Check formatting
 info "Checking code formatting..."
 cargo fmt --all -- --check

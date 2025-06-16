@@ -38,14 +38,13 @@ mod order {
     }
 }
 
-
-mod workers {
+mod server {
     use yasm::*;
 
     define_state_machine! {
-        name: ResourceStateMachine,
+        name: ServerStateMachine,
         states: { Pending, Active, Sunsetting, Maintenance, Terminated },
-        inputs: { Activate, Deactivate, Maintain, Terminate, EditDesc, Rollback, MaintenanceSuccess },
+        inputs: { Activate, Deactivate, Maintain, Terminate, _EditDesc, Rollback, MaintenanceSuccess },
         initial: Pending,
         transitions: {
             Pending + Activate => Active,
@@ -55,15 +54,14 @@ mod workers {
             Sunsetting + Rollback => Pending,
             Maintenance + Terminate => Terminated,
             Maintenance + MaintenanceSuccess => Pending,
-            Pending + EditDesc => Pending,
-            Active + EditDesc => Active,
-            Sunsetting + EditDesc => Sunsetting,
-            Maintenance + EditDesc => Maintenance,
-            Terminated + EditDesc => Terminated,
+            Pending + _EditDesc => Pending,
+            Active + _EditDesc => Active,
+            Sunsetting + _EditDesc => Sunsetting,
+            Maintenance + _EditDesc => Maintenance,
+            Terminated + _EditDesc => Terminated,
         }
     }
 }
-
 
 fn main() -> std::io::Result<()> {
     println!("📚 Generating state machine documentation...\n");
@@ -77,8 +75,8 @@ fn main() -> std::io::Result<()> {
     // Generate order state machine documentation
     generate_order_docs()?;
 
-    // Generate workers state machine documentation
-    generate_workers_docs()?;
+    // Generate server state machine documentation
+    generate_server_docs()?;
 
     println!("✅ Documentation generation complete! Check the docs/ directory");
     println!("\nGenerated files:");
@@ -86,8 +84,8 @@ fn main() -> std::io::Result<()> {
     println!("- docs/order_state_machine.md");
     println!("- docs/door_state_machine.mermaid");
     println!("- docs/order_state_machine.mermaid");
-    println!("- docs/workers_state_machine.md");
-    println!("- docs/workers_state_machine.mermaid");
+    println!("- docs/server_state_machine.md");
+    println!("- docs/server_state_machine.mermaid");
 
     Ok(())
 }
@@ -206,17 +204,17 @@ fn generate_order_docs() -> std::io::Result<()> {
     Ok(())
 }
 
-fn generate_workers_docs() -> std::io::Result<()> {
-    println!("👷 Generating workers state machine documentation...");
+fn generate_server_docs() -> std::io::Result<()> {
+    println!("👷 Generating server state machine documentation...");
 
     // Generate Mermaid diagram
-    let mermaid = StateMachineDoc::<workers::ResourceStateMachine>::generate_mermaid();
-    fs::write("docs/workers_state_machine.mermaid", &mermaid)?;
+    let mermaid = StateMachineDoc::<server::ServerStateMachine>::generate_mermaid();
+    fs::write("docs/server_state_machine.mermaid", &mermaid)?;
 
     // Generate complete Markdown documentation
     let mut doc = String::new();
-    doc.push_str("# Resource State Machine\n\n");
-    doc.push_str("This is a comprehensive resource state machine that manages the lifecycle of resources (such as workers, services, or infrastructure components).\n\n");
+    doc.push_str("# Server State Machine\n\n");
+    doc.push_str("This is a comprehensive server state machine that manages the lifecycle of servers (such as workers, services, or infrastructure components).\n\n");
 
     doc.push_str("## State Diagram\n\n");
     doc.push_str("```mermaid\n");
@@ -224,62 +222,64 @@ fn generate_workers_docs() -> std::io::Result<()> {
     doc.push_str("```\n\n");
 
     doc.push_str("## State Descriptions\n\n");
-    doc.push_str("- **Pending**: Resource is created and waiting to be activated\n");
-    doc.push_str("- **Active**: Resource is running and serving requests\n");
-    doc.push_str("- **Sunsetting**: Resource is being phased out, no new requests accepted\n");
-    doc.push_str("- **Maintenance**: Resource is under maintenance, temporarily unavailable\n");
-    doc.push_str("- **Terminated**: Resource has been permanently shut down\n\n");
+    doc.push_str("- **Pending**: Server is created and waiting to be activated\n");
+    doc.push_str("- **Active**: Server is running and serving requests\n");
+    doc.push_str("- **Sunsetting**: Server is being phased out, no new requests accepted\n");
+    doc.push_str("- **Maintenance**: Server is under maintenance, temporarily unavailable\n");
+    doc.push_str("- **Terminated**: Server has been permanently shut down\n\n");
 
     doc.push_str("## Input Descriptions\n\n");
     doc.push_str("- **Activate**: Start the resource and make it available\n");
     doc.push_str("- **Deactivate**: Begin the sunsetting process\n");
     doc.push_str("- **Maintain**: Put the resource into maintenance mode\n");
     doc.push_str("- **Terminate**: Permanently shut down the resource\n");
-    doc.push_str("- **EditDesc**: Add or modify notes about the resource (available in all states)\n");
+    doc.push_str(
+        "- **EditDesc**: Add or modify notes about the resource (available in all states)\n",
+    );
 
-    doc.push_str(&StateMachineDoc::<workers::ResourceStateMachine>::generate_transition_table());
+    doc.push_str(&StateMachineDoc::<server::ServerStateMachine>::generate_transition_table());
 
     // Add operational workflows
     doc.push_str("\n## Operational Workflows\n\n");
     doc.push_str("### Normal Lifecycle\n");
-    doc.push_str("1. Resource created (Pending)\n");
-    doc.push_str("2. Resource activated (Activate) → Active\n");
-    doc.push_str("3. Resource deactivated (Deactivate) → Sunsetting\n");
-    doc.push_str("4. Final termination (Terminate) → Terminated\n\n");
+    doc.push_str("1. Server created (Pending)\n");
+    doc.push_str("2. Server activated (Activate) → Active\n");
+    doc.push_str("3. Server deactivated (Deactivate) → Sunsetting\n");
+    doc.push_str("4. Server maintenance (Maintain) → Maintenance\n");
+    doc.push_str("5. Server terminated (Terminate) → Terminated\n\n");
 
     doc.push_str("### Maintenance Workflow\n");
     doc.push_str("- From Sunsetting: (Maintain) → Maintenance\n");
-    doc.push_str("- From Maintenance: (Restore) → Pending\n");
     doc.push_str("- From Maintenance: (Terminate) → Terminated\n\n");
 
     doc.push_str("### Monitoring Operations\n");
-    doc.push_str("- EditDesc and ViewLogs operations are available in all states\n");
-    doc.push_str("- These operations don't change the resource state\n");
+    doc.push_str("- EditDesc operations are available in all states\n");
+    doc.push_str("- These operations don't change the server state\n");
     doc.push_str("- Useful for operational monitoring and documentation\n\n");
 
     doc.push_str("## Usage Example\n\n");
     doc.push_str("```rust\n");
     doc.push_str("use yasm::*;\n\n");
-    doc.push_str("let mut resource = StateMachineInstance::<workers::ResourceStateMachine>::new();\n");
-    doc.push_str("assert_eq!(*resource.current_state(), workers::State::Pending);\n\n");
-    doc.push_str("// Activate resource\n");
-    doc.push_str("resource.transition(workers::Input::Activate).unwrap();\n");
-    doc.push_str("assert_eq!(*resource.current_state(), workers::State::Active);\n\n");
+    doc.push_str("let mut server = StateMachineInstance::<server::ServerStateMachine>::new();\n");
+    doc.push_str("assert_eq!(*server.current_state(), server::State::Pending);\n\n");
+    doc.push_str("// Activate server\n");
+    doc.push_str("server.transition(server::Input::Activate).unwrap();\n");
+    doc.push_str("assert_eq!(*server.current_state(), server::State::Active);\n\n");
     doc.push_str("// Add notes while active\n");
-    doc.push_str("resource.transition(workers::Input::EditDesc).unwrap();\n");
-    doc.push_str("assert_eq!(*resource.current_state(), workers::State::Active);\n\n");
+    doc.push_str("server.transition(server::Input::EditDesc).unwrap();\n");
+    doc.push_str("assert_eq!(*server.current_state(), server::State::Active);\n\n");
     doc.push_str("// Begin sunsetting\n");
-    doc.push_str("resource.transition(workers::Input::Deactivate).unwrap();\n");
-    doc.push_str("assert_eq!(*resource.current_state(), workers::State::Sunsetting);\n\n");
+    doc.push_str("server.transition(server::Input::Deactivate).unwrap();\n");
+    doc.push_str("assert_eq!(*server.current_state(), server::State::Sunsetting);\n\n");
     doc.push_str("// Enter maintenance mode\n");
-    doc.push_str("resource.transition(workers::Input::Maintain).unwrap();\n");
-    doc.push_str("assert_eq!(*resource.current_state(), workers::State::Maintenance);\n\n");
-    doc.push_str("// Restore to pending\n");
-    doc.push_str("resource.transition(workers::Input::Restore).unwrap();\n");
-    doc.push_str("assert_eq!(*resource.current_state(), workers::State::Pending);\n");
+    doc.push_str("server.transition(server::Input::Maintain).unwrap();\n");
+    doc.push_str("assert_eq!(*server.current_state(), server::State::Maintenance);\n\n");
+    doc.push_str("// Maintenance successful\n");
+    doc.push_str("server.transition(server::Input::MaintenanceSuccess).unwrap();\n");
+    doc.push_str("assert_eq!(*server.current_state(), server::State::Pending);\n");
     doc.push_str("```\n");
 
-    fs::write("docs/workers_state_machine.md", doc)?;
+    fs::write("docs/server_state_machine.md", doc)?;
 
     Ok(())
 }
