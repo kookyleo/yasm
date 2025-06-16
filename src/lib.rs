@@ -162,22 +162,33 @@ impl<SM: StateMachine> StateMachineDoc<SM> {
         let initial = SM::initial_state();
         mermaid.push_str(&format!("    [*] --> {}\n", SM::state_name(&initial)));
 
-        // Add all transitions
-        let mut transitions = HashMap::new();
+        // Separate normal transitions from self-loops
+        let mut normal_transitions = HashMap::new();
+        let mut self_loops = HashMap::new();
 
         for state in SM::states() {
             for input in SM::valid_inputs(&state) {
                 for next_state in SM::next_states(&state, &input) {
-                    let key = (state.clone(), next_state.clone());
-                    transitions
-                        .entry(key)
-                        .or_insert_with(Vec::new)
-                        .push(input.clone());
+                    if state == next_state {
+                        // Self-loop
+                        self_loops
+                            .entry(state.clone())
+                            .or_insert_with(Vec::new)
+                            .push(input.clone());
+                    } else {
+                        // Normal transition
+                        let key = (state.clone(), next_state.clone());
+                        normal_transitions
+                            .entry(key)
+                            .or_insert_with(Vec::new)
+                            .push(input.clone());
+                    }
                 }
             }
         }
 
-        for ((from, to), inputs) in transitions {
+        // Add normal transitions first
+        for ((from, to), inputs) in normal_transitions {
             let input_labels: Vec<String> = inputs.iter().map(|i| SM::input_name(i)).collect();
             let label = input_labels.join(" / ");
 
@@ -187,6 +198,31 @@ impl<SM: StateMachine> StateMachineDoc<SM> {
                 SM::state_name(&to),
                 label
             ));
+        }
+
+        // Add self-loops separately with better formatting
+        for (state, inputs) in self_loops {
+            // Group self-loop inputs - if there are many, show them on separate lines
+            if inputs.len() <= 2 {
+                let input_labels: Vec<String> = inputs.iter().map(|i| SM::input_name(i)).collect();
+                let label = input_labels.join(" / ");
+                mermaid.push_str(&format!(
+                    "    {} --> {} : {}\n",
+                    SM::state_name(&state),
+                    SM::state_name(&state),
+                    label
+                ));
+            } else {
+                // For many self-loop inputs, add them individually to avoid overcrowding
+                for input in inputs {
+                    mermaid.push_str(&format!(
+                        "    {} --> {} : {}\n",
+                        SM::state_name(&state),
+                        SM::state_name(&state),
+                        SM::input_name(&input)
+                    ));
+                }
+            }
         }
 
         mermaid
