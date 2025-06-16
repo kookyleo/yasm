@@ -136,11 +136,6 @@ fn demo_history_limits() {
         println!("  {}. {:?} --{:?}-->", i + 1, from_state, input);
     }
 
-    // Remove history limit
-    println!("\nRemoving history limit:");
-    limited_machine =
-        StateMachineInstance::<demo_machine::DemoStateMachine>::with_max_history(usize::MAX);
-
     // Add more transitions
     limited_machine
         .transition(demo_machine::Input::Start)
