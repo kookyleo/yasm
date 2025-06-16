@@ -99,7 +99,7 @@ define_state_machine! {
     transitions: {
         Active + Maintain => Maintenance,
         Maintenance + Restore => Active,
-        // 隐藏操作：不会在文档中显示，但功能正常
+        // 隐藏操作：不会在文档中显示，但查询功能还是完整的
         Active + _Debug => Active,
         Maintenance + _Debug => Maintenance,
         Active + _EditDescription => Active,
