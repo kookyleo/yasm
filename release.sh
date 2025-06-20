@@ -98,7 +98,7 @@ cargo build --release
 
 # Create git commit
 info "Creating git commit..."
-git add *
+git add $(git ls-files --others --exclude-standard) # Add all files that are not tracked by git and not in the .gitignore
 git commit -m "chore: bump version to $NEW_VERSION"
 
 # Create git tag

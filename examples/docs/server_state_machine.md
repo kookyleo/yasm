@@ -7,13 +7,13 @@ This is a comprehensive server state machine that manages the lifecycle of serve
 ```mermaid
 stateDiagram-v2
     [*] --> Pending
-    Maintenance --> Pending : MaintenanceSuccess
     Active --> Sunsetting : Deactivate
-    Pending --> Active : Activate
-    Sunsetting --> Terminated : Terminate
     Sunsetting --> Maintenance : Maintain
+    Pending --> Active : Activate
     Sunsetting --> Pending : Rollback
     Maintenance --> Terminated : Terminate
+    Maintenance --> Pending : MaintenanceSuccess
+    Sunsetting --> Terminated : Terminate
 ```
 
 ## State Descriptions
