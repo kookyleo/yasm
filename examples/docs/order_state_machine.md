@@ -7,12 +7,12 @@ This is an order processing state machine that demonstrates the complete lifecyc
 ```mermaid
 stateDiagram-v2
     [*] --> Created
-    Created --> Paid : Pay
     Created --> Cancelled : Cancel
-    Paid --> Shipped : Ship
     Shipped --> Delivered : Deliver
-    Paid --> Cancelled : Refund
+    Paid --> Shipped : Ship
     Shipped --> Cancelled : Cancel
+    Paid --> Cancelled : Refund
+    Created --> Paid : Pay
 ```
 
 ## State Descriptions

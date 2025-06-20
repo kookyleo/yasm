@@ -98,7 +98,7 @@ cargo build --release
 
 # Create git commit
 info "Creating git commit..."
-git add Cargo.toml Cargo.lock docs/
+git add *
 git commit -m "chore: bump version to $NEW_VERSION"
 
 # Create git tag
