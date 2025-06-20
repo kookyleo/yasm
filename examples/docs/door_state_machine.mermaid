@@ -1,6 +1,6 @@
 stateDiagram-v2
     [*] --> Closed
     Open --> Closed : CloseDoor
+    Locked --> Closed : Unlock
     Closed --> Open : OpenDoor
     Closed --> Locked : Lock
-    Locked --> Closed : Unlock

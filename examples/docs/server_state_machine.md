@@ -7,13 +7,13 @@ This is a comprehensive server state machine that manages the lifecycle of serve
 ```mermaid
 stateDiagram-v2
     [*] --> Pending
+    Sunsetting --> Maintenance : Maintain
+    Pending --> Active : Activate
+    Active --> Sunsetting : Deactivate
+    Sunsetting --> Terminated : Terminate
     Sunsetting --> Pending : Rollback
     Maintenance --> Terminated : Terminate
     Maintenance --> Pending : MaintenanceSuccess
-    Sunsetting --> Terminated : Terminate
-    Pending --> Active : Activate
-    Active --> Sunsetting : Deactivate
-    Sunsetting --> Maintenance : Maintain
 ```
 
 ## State Descriptions
@@ -31,10 +31,10 @@ stateDiagram-v2
 - **Maintain**: Put the resource into maintenance mode
 - **Terminate**: Permanently shut down the resource
 - **EditDesc**: Add or modify notes about the resource (available in all states)
-# 状态转换表
+# State Transition Table
 
-| 当前状态 | 输入 | 下一状态 |
-|----------|------|----------|
+| Current State | Input | Next State |
+|---------------|-------|------------|
 | Pending | Activate | Active |
 | Active | Deactivate | Sunsetting |
 | Sunsetting | Maintain | Maintenance |
