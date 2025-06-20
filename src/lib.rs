@@ -309,11 +309,13 @@ macro_rules! define_state_machine {
         }
     ) => {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub enum State {
             $($state),*
         }
 
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub enum Input {
             $($input),*
         }
@@ -534,5 +536,31 @@ mod tests {
         // Test normal transition
         sm.transition(Input::Action).unwrap();
         assert_eq!(*sm.current_state(), State::StateB);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn test_serde_serialization() {
+        // Test State serialization
+        let state = State::Red;
+        let serialized = serde_json::to_string(&state).unwrap();
+        assert_eq!(serialized, "\"Red\"");
+
+        let deserialized: State = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, State::Red);
+
+        // Test Input serialization
+        let input = Input::Timer;
+        let serialized = serde_json::to_string(&input).unwrap();
+        assert_eq!(serialized, "\"Timer\"");
+
+        let deserialized: Input = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, Input::Timer);
+
+        // Test multiple states
+        let states = vec![State::Red, State::Yellow, State::Green];
+        let serialized = serde_json::to_string(&states).unwrap();
+        let deserialized: Vec<State> = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(deserialized, states);
     }
 }
