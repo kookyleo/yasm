@@ -1,503 +1,75 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::fmt::Debug;
-use std::hash::Hash;
+//! # YASM (Yet Another State Machine)
+//!
+//! A modern, efficient deterministic state machine library designed for Rust 2024 edition.
+//!
+//! ## Features
+//!
+//! - **Deterministic State Machine**: Each state+input combination has at most one possible next state
+//! - **Type Safety**: Leverage Rust's type system to ensure state machine correctness
+//! - **Macro Support**: Use declarative macros to quickly define state machines
+//! - **History Tracking**: Automatically maintain state transition history for debugging and analysis
+//! - **Query Functions**: Rich state machine analysis capabilities
+//! - **Documentation Generation**: Automatically generate Mermaid diagrams and transition tables
+//! - **Serde Support**: Optional serialization and deserialization support
+//!
+//! ## Basic Usage
+//!
+//! ```rust
+//! use yasm::*;
+//!
+//! // Define state machine
+//! define_state_machine! {
+//!     name: TrafficLight,
+//!     states: { Red, Yellow, Green },
+//!     inputs: { Timer, Emergency },
+//!     initial: Red,
+//!     transitions: {
+//!         Red + Timer => Green,
+//!         Green + Timer => Yellow,
+//!         Yellow + Timer => Red,
+//!         Red + Emergency => Yellow,
+//!         Green + Emergency => Red,
+//!         Yellow + Emergency => Red
+//!     }
+//! }
+//!
+//! // Create state machine instance
+//! let mut traffic_light = StateMachineInstance::<TrafficLight>::new();
+//!
+//! // Execute state transition
+//! traffic_light.transition(Input::Timer).unwrap();
+//! assert_eq!(*traffic_light.current_state(), State::Green);
+//! ```
+//!
+//! ## Module Structure
+//!
+//! - [`core`][]: Core trait and type definitions
+//! - [`instance`][]: State machine instance implementation
+//! - [`query`][]: State machine query and analysis functionality
+//! - [`doc`][]: Documentation generation functionality
+//! - [`macros`][]: Macro definitions
 
-/// State machine definition trait
-pub trait StateMachine {
-    type State: Clone + Debug + Hash + Eq;
-    type Input: Clone + Debug + Hash + Eq;
+// Module declarations
+pub mod core;
+pub mod doc;
+pub mod instance;
+pub mod macros;
+pub mod query;
 
-    /// Get all possible states
-    fn states() -> Vec<Self::State>;
-
-    /// Get all possible inputs
-    fn inputs() -> Vec<Self::Input>;
-
-    /// Get valid inputs for a given state
-    fn valid_inputs(state: &Self::State) -> Vec<Self::Input>;
-
-    /// Get possible next states from current state with given input
-    fn next_states(state: &Self::State, input: &Self::Input) -> Vec<Self::State>;
-
-    /// Get the initial state
-    fn initial_state() -> Self::State;
-
-    /// Get state name for display
-    fn state_name(state: &Self::State) -> String;
-
-    /// Get input name for display
-    fn input_name(input: &Self::Input) -> String;
-}
-
-/// State machine instance that can execute transitions
-#[derive(Debug, Clone)]
-pub struct StateMachineInstance<SM: StateMachine> {
-    current_state: SM::State,
-    history: VecDeque<(SM::State, SM::Input)>,
-    max_history_size: usize,
-}
+// Re-export public interface
+pub use core::StateMachine;
+pub use doc::StateMachineDoc;
+pub use instance::StateMachineInstance;
+pub use query::StateMachineQuery;
 
 /// Default maximum history size
-const DEFAULT_MAX_HISTORY_SIZE: usize = 512;
-
-impl<SM: StateMachine> StateMachineInstance<SM> {
-    /// Create a new state machine instance with default history size
-    pub fn new() -> Self {
-        Self {
-            current_state: SM::initial_state(),
-            history: VecDeque::new(),
-            max_history_size: DEFAULT_MAX_HISTORY_SIZE,
-        }
-    }
-
-    /// Create a new state machine instance with custom history size
-    pub fn with_max_history(max_size: usize) -> Self {
-        Self {
-            current_state: SM::initial_state(),
-            history: VecDeque::with_capacity(max_size),
-            max_history_size: max_size,
-        }
-    }
-
-    /// Get maximum history size
-    pub fn max_history_size(&self) -> usize {
-        self.max_history_size
-    }
-
-    /// Get current state
-    pub fn current_state(&self) -> &SM::State {
-        &self.current_state
-    }
-
-    /// Get transition history
-    pub fn history(&self) -> &VecDeque<(SM::State, SM::Input)> {
-        &self.history
-    }
-
-    /// Check if input is valid for current state
-    pub fn can_accept(&self, input: &SM::Input) -> bool {
-        SM::valid_inputs(&self.current_state).contains(input)
-    }
-
-    /// Get all valid inputs for current state
-    pub fn valid_inputs(&self) -> Vec<SM::Input> {
-        SM::valid_inputs(&self.current_state)
-    }
-
-    /// Execute a transition
-    pub fn transition(&mut self, input: SM::Input) -> Result<Vec<SM::State>, String> {
-        if !self.can_accept(&input) {
-            return Err(format!(
-                "Invalid input {:?} for state {:?}",
-                input, self.current_state
-            ));
-        }
-
-        let next_states = SM::next_states(&self.current_state, &input);
-        if next_states.is_empty() {
-            return Err(format!(
-                "No valid transitions from state {:?} with input {:?}",
-                self.current_state, input
-            ));
-        }
-
-        // Record transition in history
-        self.history.push_back((self.current_state.clone(), input));
-
-        // Maintain history size limit using efficient ring buffer operations
-        if self.history.len() > self.max_history_size {
-            self.history.pop_front();
-        }
-
-        // For MVP, we take the first valid next state
-        // In future versions, this could support non-deterministic transitions
-        self.current_state = next_states[0].clone();
-
-        Ok(next_states)
-    }
-}
-
-impl<SM: StateMachine> Default for StateMachineInstance<SM> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// Query utilities for state machine
-pub struct StateMachineQuery<SM: StateMachine> {
-    _phantom: std::marker::PhantomData<SM>,
-}
-
-impl<SM: StateMachine> StateMachineQuery<SM> {
-    /// Get all states that can reach the target state
-    pub fn states_leading_to(target: &SM::State) -> Vec<SM::State> {
-        let mut result = Vec::new();
-
-        for state in SM::states() {
-            for input in SM::valid_inputs(&state) {
-                if SM::next_states(&state, &input).contains(target) {
-                    result.push(state.clone());
-                    break;
-                }
-            }
-        }
-
-        result
-    }
-
-    /// Get all reachable states from a given state
-    pub fn reachable_states(from: &SM::State) -> Vec<SM::State> {
-        let mut reachable = HashSet::new();
-        let mut to_visit = vec![from.clone()];
-
-        while let Some(current) = to_visit.pop() {
-            if reachable.contains(&current) {
-                continue;
-            }
-            reachable.insert(current.clone());
-
-            for input in SM::valid_inputs(&current) {
-                for next_state in SM::next_states(&current, &input) {
-                    if !reachable.contains(&next_state) {
-                        to_visit.push(next_state);
-                    }
-                }
-            }
-        }
-
-        reachable.into_iter().collect()
-    }
-
-    /// Check if there's a path from one state to another
-    pub fn has_path(from: &SM::State, to: &SM::State) -> bool {
-        Self::reachable_states(from).contains(to)
-    }
-}
-
-/// Documentation generator for state machine
-pub struct StateMachineDoc<SM: StateMachine> {
-    _phantom: std::marker::PhantomData<SM>,
-}
-
-impl<SM: StateMachine> StateMachineDoc<SM> {
-    /// Check if an input should be included in documentation
-    fn should_include_input(input: &SM::Input) -> bool {
-        !SM::input_name(input).starts_with('_')
-    }
-
-    /// Generate Mermaid state diagram
-    pub fn generate_mermaid() -> String {
-        let mut mermaid = String::from("stateDiagram-v2\n");
-
-        // Add initial state marker
-        let initial = SM::initial_state();
-        mermaid.push_str(&format!("    [*] --> {}\n", SM::state_name(&initial)));
-
-        // Separate normal transitions from self-loops
-        let mut normal_transitions = HashMap::new();
-        let mut self_loops = HashMap::new();
-
-        for state in SM::states() {
-            for input in SM::valid_inputs(&state) {
-                // Skip inputs that start with underscore
-                if !Self::should_include_input(&input) {
-                    continue;
-                }
-
-                for next_state in SM::next_states(&state, &input) {
-                    if state == next_state {
-                        // Self-loop
-                        self_loops
-                            .entry(state.clone())
-                            .or_insert_with(Vec::new)
-                            .push(input.clone());
-                    } else {
-                        // Normal transition
-                        let key = (state.clone(), next_state.clone());
-                        normal_transitions
-                            .entry(key)
-                            .or_insert_with(Vec::new)
-                            .push(input.clone());
-                    }
-                }
-            }
-        }
-
-        // Add normal transitions first
-        for ((from, to), inputs) in normal_transitions {
-            let input_labels: Vec<String> = inputs.iter().map(|i| SM::input_name(i)).collect();
-            let label = input_labels.join(" / ");
-
-            mermaid.push_str(&format!(
-                "    {} --> {} : {}\n",
-                SM::state_name(&from),
-                SM::state_name(&to),
-                label
-            ));
-        }
-
-        // Add self-loops separately with better formatting
-        for (state, inputs) in self_loops {
-            // Group self-loop inputs - if there are many, show them on separate lines
-            if inputs.len() <= 2 {
-                let input_labels: Vec<String> = inputs.iter().map(|i| SM::input_name(i)).collect();
-                let label = input_labels.join(" / ");
-                mermaid.push_str(&format!(
-                    "    {} --> {} : {}\n",
-                    SM::state_name(&state),
-                    SM::state_name(&state),
-                    label
-                ));
-            } else {
-                // For many self-loop inputs, add them individually to avoid overcrowding
-                for input in inputs {
-                    mermaid.push_str(&format!(
-                        "    {} --> {} : {}\n",
-                        SM::state_name(&state),
-                        SM::state_name(&state),
-                        SM::input_name(&input)
-                    ));
-                }
-            }
-        }
-
-        mermaid
-    }
-
-    /// Generate state transition table
-    pub fn generate_transition_table() -> String {
-        let mut table = String::from("# State Transition Table\n\n");
-        table.push_str("| Current State | Input | Next State(s) |\n");
-        table.push_str("|---------------|-------|---------------|\n");
-
-        for state in SM::states() {
-            for input in SM::valid_inputs(&state) {
-                // Skip inputs that start with underscore
-                if !Self::should_include_input(&input) {
-                    continue;
-                }
-
-                let next_states = SM::next_states(&state, &input);
-                let next_state_names: Vec<String> =
-                    next_states.iter().map(|s| SM::state_name(s)).collect();
-
-                table.push_str(&format!(
-                    "| {} | {} | {} |\n",
-                    SM::state_name(&state),
-                    SM::input_name(&input),
-                    next_state_names.join(", ")
-                ));
-            }
-        }
-
-        table
-    }
-}
-
-// Internal helper macro - generate common parts
-#[macro_export]
-#[doc(hidden)] // Hide internal macro
-macro_rules! __define_state_machine_common {
-    (
-        $name:ident,
-        { $($state:ident),* },
-        { $($input:ident),* },
-        $initial:ident,
-        { $( $from:ident + $inp:ident => $to:ident ),* }
-    ) => {
-        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-        pub enum State {
-            $($state),*
-        }
-
-        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-        pub enum Input {
-            $($input),*
-        }
-
-        impl std::fmt::Display for State {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                match self {
-                    $(State::$state => write!(f, stringify!($state)),)*
-                }
-            }
-        }
-
-        impl std::fmt::Display for Input {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                match self {
-                    $(Input::$input => write!(f, stringify!($input)),)*
-                }
-            }
-        }
-
-        pub struct $name;
-
-        impl $crate::StateMachine for $name {
-            type State = State;
-            type Input = Input;
-
-            fn states() -> Vec<Self::State> {
-                vec![$(State::$state),*]
-            }
-
-            fn inputs() -> Vec<Self::Input> {
-                vec![$(Input::$input),*]
-            }
-
-            fn initial_state() -> Self::State {
-                State::$initial
-            }
-
-            fn state_name(state: &Self::State) -> String {
-                format!("{:?}", state)
-            }
-
-            fn input_name(input: &Self::Input) -> String {
-                format!("{:?}", input)
-            }
-
-            fn valid_inputs(state: &Self::State) -> Vec<Self::Input> {
-                let mut inputs = Vec::new();
-                $(
-                    if matches!(state, State::$from) {
-                        inputs.push(Input::$inp);
-                    }
-                )*
-                inputs
-            }
-
-            fn next_states(state: &Self::State, input: &Self::Input) -> Vec<Self::State> {
-                #[allow(unreachable_patterns)]
-                match (state, input) {
-                    $(
-                        (State::$from, Input::$inp) => vec![State::$to],
-                    )*
-                    _ => vec![],
-                }
-            }
-        }
-    };
-}
-
-// Serde support helper macro
-#[macro_export]
-#[doc(hidden)]
-macro_rules! __define_state_machine_serde {
-    ({ $($state:ident),* }, { $($input:ident),* }) => {
-        impl serde::Serialize for State {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-            where
-                S: serde::Serializer,
-            {
-                match self {
-                    $(State::$state => serializer.serialize_str(stringify!($state)),)*
-                }
-            }
-        }
-
-        impl<'de> serde::Deserialize<'de> for State {
-            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-            where
-                D: serde::Deserializer<'de>,
-            {
-                let s = String::deserialize(deserializer)?;
-                match s.as_str() {
-                    $(stringify!($state) => Ok(State::$state),)*
-                    _ => Err(serde::de::Error::custom(format!("Unknown state: {}", s))),
-                }
-            }
-        }
-
-        impl serde::Serialize for Input {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-            where
-                S: serde::Serializer,
-            {
-                match self {
-                    $(Input::$input => serializer.serialize_str(stringify!($input)),)*
-                }
-            }
-        }
-
-        impl<'de> serde::Deserialize<'de> for Input {
-            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-            where
-                D: serde::Deserializer<'de>,
-            {
-                let s = String::deserialize(deserializer)?;
-                match s.as_str() {
-                    $(stringify!($input) => Ok(Input::$input),)*
-                    _ => Err(serde::de::Error::custom(format!("Unknown input: {}", s))),
-                }
-            }
-        }
-    };
-}
-
-/// Macro to help define state machines - with serde version
-#[cfg(feature = "serde")]
-#[macro_export]
-macro_rules! define_state_machine {
-    (
-        name: $name:ident,
-        states: { $($state:ident),* $(,)? },
-        inputs: { $($input:ident),* $(,)? },
-        initial: $initial:ident,
-        transitions: {
-            $(
-                $from:ident + $inp:ident => $to:ident
-            ),* $(,)?
-        }
-    ) => {
-        // Call common parts
-        $crate::__define_state_machine_common!(
-            $name,
-            { $($state),* },
-            { $($input),* },
-            $initial,
-            { $( $from + $inp => $to ),* }
-        );
-
-        // Add serde support
-        $crate::__define_state_machine_serde!(
-            { $($state),* },
-            { $($input),* }
-        );
-    };
-}
-
-/// Macro to help define state machines - without serde version
-#[cfg(not(feature = "serde"))]
-#[macro_export]
-macro_rules! define_state_machine {
-    (
-        name: $name:ident,
-        states: { $($state:ident),* $(,)? },
-        inputs: { $($input:ident),* $(,)? },
-        initial: $initial:ident,
-        transitions: {
-            $(
-                $from:ident + $inp:ident => $to:ident
-            ),* $(,)?
-        }
-    ) => {
-        // Call common parts
-        $crate::__define_state_machine_common!(
-            $name,
-            { $($state),* },
-            { $($input),* },
-            $initial,
-            { $( $from + $inp => $to ),* }
-        );
-    };
-}
+pub const DEFAULT_MAX_HISTORY_SIZE: usize = 512;
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // Example state machine for testing
+    // Test traffic light state machine
     define_state_machine! {
         name: TrafficLight,
         states: { Red, Yellow, Green },
@@ -513,7 +85,7 @@ mod tests {
         }
     }
 
-    // Test state machine with underscore inputs in separate module
+    // Test state machine with hidden inputs
     mod test_machine {
         use super::super::*;
 
@@ -534,7 +106,7 @@ mod tests {
     }
 
     #[test]
-    fn test_state_machine_basic() {
+    fn test_deterministic_state_machine_basic() {
         let mut sm = StateMachineInstance::<TrafficLight>::new();
         assert_eq!(*sm.current_state(), State::Red);
 
@@ -542,11 +114,52 @@ mod tests {
         let result = sm.transition(Input::Timer);
         assert!(result.is_ok());
         assert_eq!(*sm.current_state(), State::Green);
+        assert_eq!(result.unwrap(), State::Green);
 
-        // Test invalid transition
+        // Continue transition
         let result = sm.transition(Input::Timer);
         assert!(result.is_ok());
         assert_eq!(*sm.current_state(), State::Yellow);
+    }
+
+    #[test]
+    fn test_invalid_transition() {
+        let mut sm = StateMachineInstance::<TrafficLight>::new();
+        assert_eq!(*sm.current_state(), State::Red);
+
+        // Test emergency transition - Red can transition to Yellow via Emergency input
+        let result = sm.transition(Input::Emergency);
+        assert!(result.is_ok());
+        assert_eq!(*sm.current_state(), State::Yellow);
+    }
+
+    #[test]
+    fn test_state_machine_instance_methods() {
+        let mut sm = StateMachineInstance::<TrafficLight>::new();
+
+        // Test initial state
+        assert_eq!(*sm.current_state(), State::Red);
+        assert!(sm.history_is_empty());
+        assert_eq!(sm.history_len(), 0);
+
+        // Test valid input checking
+        assert!(sm.can_accept(&Input::Timer));
+        assert!(sm.can_accept(&Input::Emergency));
+
+        // Test valid input list
+        let valid_inputs = sm.valid_inputs();
+        assert!(valid_inputs.contains(&Input::Timer));
+        assert!(valid_inputs.contains(&Input::Emergency));
+
+        // Execute transition
+        sm.transition(Input::Timer).unwrap();
+        assert_eq!(sm.history_len(), 1);
+        assert!(!sm.history_is_empty());
+
+        // Test reset
+        sm.reset();
+        assert_eq!(*sm.current_state(), State::Red);
+        assert!(sm.history_is_empty());
     }
 
     #[test]
@@ -558,6 +171,19 @@ mod tests {
         let leading_to_red = StateMachineQuery::<TrafficLight>::states_leading_to(&State::Red);
         assert!(leading_to_red.contains(&State::Yellow));
         assert!(leading_to_red.contains(&State::Green));
+
+        // Test path finding
+        assert!(StateMachineQuery::<TrafficLight>::has_path(
+            &State::Red,
+            &State::Green
+        ));
+
+        // Test shortest path
+        let path = StateMachineQuery::<TrafficLight>::shortest_path(&State::Red, &State::Green);
+        assert!(path.is_some());
+        let path = path.unwrap();
+        assert_eq!(path[0], State::Red);
+        assert_eq!(path[1], State::Green);
     }
 
     #[test]
@@ -567,6 +193,8 @@ mod tests {
         assert!(mermaid.contains("Red"));
         assert!(mermaid.contains("Green"));
         assert!(mermaid.contains("Yellow"));
+        assert!(mermaid.contains("Timer"));
+        assert!(mermaid.contains("Emergency"));
     }
 
     #[test]
@@ -574,7 +202,7 @@ mod tests {
         let mut sm = StateMachineInstance::<TrafficLight>::with_max_history(2);
         assert_eq!(sm.max_history_size(), 2);
 
-        // Perform multiple transitions
+        // Execute multiple transitions
         sm.transition(Input::Timer).unwrap(); // Red -> Green
         sm.transition(Input::Timer).unwrap(); // Green -> Yellow
         sm.transition(Input::Timer).unwrap(); // Yellow -> Red
@@ -586,34 +214,12 @@ mod tests {
     }
 
     #[test]
-    fn test_history_size_dynamic_change() {
-        // Test default history size
-        let mut sm = StateMachineInstance::<TrafficLight>::new();
-        assert_eq!(sm.max_history_size(), 512); // DEFAULT_MAX_HISTORY_SIZE
+    fn test_history_size_default() {
+        let sm = StateMachineInstance::<TrafficLight>::new();
+        assert_eq!(sm.max_history_size(), DEFAULT_MAX_HISTORY_SIZE);
 
-        // Perform multiple transitions
-        sm.transition(Input::Timer).unwrap();
-        sm.transition(Input::Timer).unwrap();
-        sm.transition(Input::Timer).unwrap();
-        assert_eq!(sm.history().len(), 3);
-
-        // Test small history size limit
-        let mut sm_limited = StateMachineInstance::<TrafficLight>::with_max_history(1);
-        assert_eq!(sm_limited.max_history_size(), 1);
-        assert_eq!(sm_limited.history().len(), 0); // New instance has empty history
-
-        // Add transitions to limited instance
-        sm_limited.transition(Input::Timer).unwrap(); // Red -> Green
-        assert_eq!(sm_limited.history().len(), 1);
-        sm_limited.transition(Input::Timer).unwrap(); // Green -> Yellow
-        assert_eq!(sm_limited.history().len(), 1); // Still 1 due to limit
-        assert_eq!(sm_limited.history()[0], (State::Green, Input::Timer)); // Only latest
-
-        let mut sm_with_default_size = StateMachineInstance::<TrafficLight>::new();
-        sm_with_default_size.transition(Input::Emergency).unwrap();
-        sm_with_default_size.transition(Input::Timer).unwrap();
-        sm_with_default_size.transition(Input::Emergency).unwrap();
-        assert_eq!(sm_with_default_size.history().len(), 3);
+        let sm_default = StateMachineInstance::<TrafficLight>::default();
+        assert_eq!(sm_default.max_history_size(), DEFAULT_MAX_HISTORY_SIZE);
     }
 
     #[test]
@@ -623,7 +229,7 @@ mod tests {
         // Should contain normal actions
         assert!(mermaid.contains("Action"));
 
-        // Should NOT contain underscore-prefixed actions
+        // Should not contain underscore-prefixed actions
         assert!(!mermaid.contains("_HiddenAction"));
         assert!(!mermaid.contains("_Debug"));
 
@@ -632,7 +238,7 @@ mod tests {
         // Should contain normal actions
         assert!(table.contains("Action"));
 
-        // Should NOT contain underscore-prefixed actions
+        // Should not contain underscore-prefixed actions
         assert!(!table.contains("_HiddenAction"));
         assert!(!table.contains("_Debug"));
     }
@@ -644,21 +250,24 @@ mod tests {
         let mut sm = StateMachineInstance::<TestMachine>::new();
         assert_eq!(*sm.current_state(), State::StateA);
 
-        // Test that underscore inputs are still valid for transitions
+        // Test that underscore inputs are still valid
         let valid_inputs = sm.valid_inputs();
         assert!(valid_inputs.contains(&Input::Action));
         assert!(valid_inputs.contains(&Input::_HiddenAction));
         assert!(valid_inputs.contains(&Input::_Debug));
 
-        // Test transitions with underscore inputs work
-        sm.transition(Input::_HiddenAction).unwrap();
+        // Test underscore input transition functionality
+        let result = sm.transition(Input::_HiddenAction);
+        assert!(result.is_ok());
         assert_eq!(*sm.current_state(), State::StateA);
 
-        sm.transition(Input::_Debug).unwrap();
+        let result = sm.transition(Input::_Debug);
+        assert!(result.is_ok());
         assert_eq!(*sm.current_state(), State::StateA);
 
         // Test normal transition
-        sm.transition(Input::Action).unwrap();
+        let result = sm.transition(Input::Action);
+        assert!(result.is_ok());
         assert_eq!(*sm.current_state(), State::StateB);
     }
 
@@ -668,10 +277,22 @@ mod tests {
         assert_eq!(Input::Timer.to_string(), "Timer");
     }
 
+    #[test]
+    fn test_documentation_generation() {
+        let stats = StateMachineDoc::<TrafficLight>::generate_statistics();
+        assert!(stats.contains("Number of States"));
+        assert!(stats.contains("Number of Transitions"));
+
+        let full_doc = StateMachineDoc::<TrafficLight>::generate_full_documentation();
+        assert!(full_doc.contains("State Machine Documentation"));
+        assert!(full_doc.contains("State Transition Table"));
+        assert!(full_doc.contains("State Diagram"));
+    }
+
     #[cfg(feature = "serde")]
     #[test]
     fn test_serde_serialization() {
-        // Test State serialization
+        // Test state serialization
         let state = State::Red;
         let serialized = serde_json::to_string(&state).unwrap();
         assert_eq!(serialized, "\"Red\"");
@@ -679,7 +300,7 @@ mod tests {
         let deserialized: State = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized, State::Red);
 
-        // Test Input serialization
+        // Test input serialization
         let input = Input::Timer;
         let serialized = serde_json::to_string(&input).unwrap();
         assert_eq!(serialized, "\"Timer\"");

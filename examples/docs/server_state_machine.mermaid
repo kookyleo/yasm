@@ -1,9 +1,9 @@
 stateDiagram-v2
     [*] --> Pending
-    Sunsetting --> Terminated : Terminate
     Sunsetting --> Pending : Rollback
-    Active --> Sunsetting : Deactivate
     Maintenance --> Terminated : Terminate
-    Sunsetting --> Maintenance : Maintain
-    Pending --> Active : Activate
     Maintenance --> Pending : MaintenanceSuccess
+    Sunsetting --> Terminated : Terminate
+    Pending --> Active : Activate
+    Active --> Sunsetting : Deactivate
+    Sunsetting --> Maintenance : Maintain

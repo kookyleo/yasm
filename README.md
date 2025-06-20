@@ -6,17 +6,19 @@
 [![Documentation](https://docs.rs/yasm/badge.svg)](https://docs.rs/yasm)
 [![License](https://img.shields.io/crates/l/yasm.svg)](https://github.com/kookyleo/yasm#license)
 
-A simple and powerful Rust state machine library focused on usability and visualization.
+A modern, efficient **deterministic** state machine library designed for Rust 2024 edition.
 
 ## Features
 
+- ⚡ **Deterministic State Machine**: Each state+input combination has at most one possible next state, improving predictability and debuggability
 - 🚀 **Easy to Use**: Define state machines with macros using clean and concise syntax
 - 📊 **Visualization**: Automatically generate Mermaid format state diagrams
-- 🔍 **Query Functions**: Rich state machine query and analysis capabilities
-- 📝 **Documentation Generation**: Automatically generate state transition tables and documentation
+- 🔍 **Query Functions**: Rich state machine query and analysis capabilities, including path finding and reachability analysis
+- 📝 **Documentation Generation**: Automatically generate state transition tables, statistics, and complete documentation
 - 🛡️ **Type Safety**: Leverage Rust's type system to ensure correct state transitions
 - 🔧 **Hidden Operations**: Support underscore-prefixed inputs that don't appear in documentation
-- 📈 **Performance Optimization**: Support history size limits to prevent memory issues
+- 📈 **Performance Optimization**: Use ring buffer and history size limits to prevent memory issues
+- 🏗️ **Modular Design**: Code structured into semantic modules for better understanding and maintenance
 
 ## Quick Start
 
@@ -124,6 +126,18 @@ println!("States that can reach Locked: {:?}", leading_to);
 // Check if there's a path between two states
 let has_path = StateMachineQuery::<door::DoorStateMachine>::has_path(&door::State::Open, &door::State::Locked);
 println!("Path from Open to Locked exists: {}", has_path);
+
+// Find shortest path between two states
+let path = StateMachineQuery::<door::DoorStateMachine>::shortest_path(&door::State::Open, &door::State::Locked);
+println!("Shortest path: {:?}", path);
+
+// Get terminal states
+let terminal_states = StateMachineQuery::<door::DoorStateMachine>::terminal_states();
+println!("Terminal states: {:?}", terminal_states);
+
+// Check strong connectivity
+let is_strongly_connected = StateMachineQuery::<door::DoorStateMachine>::is_strongly_connected();
+println!("Is strongly connected: {}", is_strongly_connected);
 ```
 
 ### Generate Documentation
@@ -156,8 +170,8 @@ Output:
 ```markdown
 # State Transition Table
 
-| Current State | Input | Next State(s) |
-|---------------|-------|---------------|
+| Current State | Input | Next State |
+|---------------|-------|------------|
 | Closed | OpenDoor | Open |
 | Closed | Lock | Locked |
 | Open | CloseDoor | Closed |

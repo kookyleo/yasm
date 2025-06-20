@@ -7,8 +7,8 @@ This is a simple door state machine that demonstrates basic door operations: ope
 ```mermaid
 stateDiagram-v2
     [*] --> Closed
-    Closed --> Open : OpenDoor
     Open --> Closed : CloseDoor
+    Closed --> Open : OpenDoor
     Closed --> Locked : Lock
     Locked --> Closed : Unlock
 ```
@@ -26,10 +26,10 @@ stateDiagram-v2
 - **Lock**: Lock door operation
 - **Unlock**: Unlock door operation
 
-# State Transition Table
+# 状态转换表
 
-| Current State | Input | Next State(s) |
-|---------------|-------|---------------|
+| 当前状态 | 输入 | 下一状态 |
+|----------|------|----------|
 | Closed | OpenDoor | Open |
 | Closed | Lock | Locked |
 | Open | CloseDoor | Closed |
