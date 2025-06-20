@@ -294,28 +294,23 @@ impl<SM: StateMachine> StateMachineDoc<SM> {
     }
 }
 
-/// Macro to help define state machines
+// Internal helper macro - generate common parts
 #[macro_export]
-macro_rules! define_state_machine {
+#[doc(hidden)] // Hide internal macro
+macro_rules! __define_state_machine_common {
     (
-        name: $name:ident,
-        states: { $($state:ident),* $(,)? },
-        inputs: { $($input:ident),* $(,)? },
-        initial: $initial:ident,
-        transitions: {
-            $(
-                $from:ident + $inp:ident => $to:ident
-            ),* $(,)?
-        }
+        $name:ident,
+        { $($state:ident),* },
+        { $($input:ident),* },
+        $initial:ident,
+        { $( $from:ident + $inp:ident => $to:ident ),* }
     ) => {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub enum State {
             $($state),*
         }
 
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub enum Input {
             $($input),*
         }
@@ -366,6 +361,119 @@ macro_rules! define_state_machine {
                 }
             }
         }
+    };
+}
+
+// Serde support helper macro
+#[macro_export]
+#[doc(hidden)]
+macro_rules! __define_state_machine_serde {
+    ({ $($state:ident),* }, { $($input:ident),* }) => {
+        impl serde::Serialize for State {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                match self {
+                    $(State::$state => serializer.serialize_str(stringify!($state)),)*
+                }
+            }
+        }
+
+        impl<'de> serde::Deserialize<'de> for State {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                let s = String::deserialize(deserializer)?;
+                match s.as_str() {
+                    $(stringify!($state) => Ok(State::$state),)*
+                    _ => Err(serde::de::Error::custom(format!("Unknown state: {}", s))),
+                }
+            }
+        }
+
+        impl serde::Serialize for Input {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                match self {
+                    $(Input::$input => serializer.serialize_str(stringify!($input)),)*
+                }
+            }
+        }
+
+        impl<'de> serde::Deserialize<'de> for Input {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                let s = String::deserialize(deserializer)?;
+                match s.as_str() {
+                    $(stringify!($input) => Ok(Input::$input),)*
+                    _ => Err(serde::de::Error::custom(format!("Unknown input: {}", s))),
+                }
+            }
+        }
+    };
+}
+
+/// Macro to help define state machines - with serde version
+#[cfg(feature = "serde")]
+#[macro_export]
+macro_rules! define_state_machine {
+    (
+        name: $name:ident,
+        states: { $($state:ident),* $(,)? },
+        inputs: { $($input:ident),* $(,)? },
+        initial: $initial:ident,
+        transitions: {
+            $(
+                $from:ident + $inp:ident => $to:ident
+            ),* $(,)?
+        }
+    ) => {
+        // Call common parts
+        $crate::__define_state_machine_common!(
+            $name,
+            { $($state),* },
+            { $($input),* },
+            $initial,
+            { $( $from + $inp => $to ),* }
+        );
+
+        // Add serde support
+        $crate::__define_state_machine_serde!(
+            { $($state),* },
+            { $($input),* }
+        );
+    };
+}
+
+/// Macro to help define state machines - without serde version
+#[cfg(not(feature = "serde"))]
+#[macro_export]
+macro_rules! define_state_machine {
+    (
+        name: $name:ident,
+        states: { $($state:ident),* $(,)? },
+        inputs: { $($input:ident),* $(,)? },
+        initial: $initial:ident,
+        transitions: {
+            $(
+                $from:ident + $inp:ident => $to:ident
+            ),* $(,)?
+        }
+    ) => {
+        // Call common parts
+        $crate::__define_state_machine_common!(
+            $name,
+            { $($state),* },
+            { $($input),* },
+            $initial,
+            { $( $from + $inp => $to ),* }
+        );
     };
 }
 
