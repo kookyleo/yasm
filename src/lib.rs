@@ -315,6 +315,22 @@ macro_rules! __define_state_machine_common {
             $($input),*
         }
 
+        impl std::fmt::Display for State {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(State::$state => write!(f, stringify!($state)),)*
+                }
+            }
+        }
+
+        impl std::fmt::Display for Input {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(Input::$input => write!(f, stringify!($input)),)*
+                }
+            }
+        }
+
         pub struct $name;
 
         impl $crate::StateMachine for $name {
@@ -644,6 +660,12 @@ mod tests {
         // Test normal transition
         sm.transition(Input::Action).unwrap();
         assert_eq!(*sm.current_state(), State::StateB);
+    }
+
+    #[test]
+    fn test_display_implementation() {
+        assert_eq!(State::Red.to_string(), "Red");
+        assert_eq!(Input::Timer.to_string(), "Timer");
     }
 
     #[cfg(feature = "serde")]
