@@ -8,11 +8,11 @@ This is an order processing state machine that demonstrates the complete lifecyc
 stateDiagram-v2
     [*] --> Created
     Created --> Paid : Pay
-    Created --> Cancelled : Cancel
-    Paid --> Shipped : Ship
-    Shipped --> Cancelled : Cancel
-    Shipped --> Delivered : Deliver
     Paid --> Cancelled : Refund
+    Created --> Cancelled : Cancel
+    Shipped --> Delivered : Deliver
+    Shipped --> Cancelled : Cancel
+    Paid --> Shipped : Ship
 ```
 
 ## State Descriptions
