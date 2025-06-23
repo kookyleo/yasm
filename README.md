@@ -6,46 +6,41 @@
 [![Documentation](https://docs.rs/yasm/badge.svg)](https://docs.rs/yasm)
 [![License](https://img.shields.io/crates/l/yasm.svg)](https://github.com/kookyleo/yasm#license)
 
-A modern, efficient **deterministic** state machine library designed for Rust 2024 edition.
+A modern, efficient **deterministic** finite state machine library.
 
-## Features
+## 🚀 Features
 
-- ⚡ **Deterministic State Machine**: Each state+input combination has at most one possible next state, improving predictability and debuggability
-- 🚀 **Easy to Use**: Define state machines with macros using clean and concise syntax
-- 📊 **Visualization**: Automatically generate Mermaid format state diagrams
-- 🔍 **Query Functions**: Rich state machine query and analysis capabilities, including path finding and reachability analysis
-- 📝 **Documentation Generation**: Automatically generate state transition tables, statistics, and complete documentation
-- 🛡️ **Type Safety**: Leverage Rust's type system to ensure correct state transitions
-- 🔧 **Hidden Operations**: Support underscore-prefixed inputs that don't appear in documentation
-- 📈 **Performance Optimization**: Use ring buffer and history size limits to prevent memory issues
-- 🏗️ **Modular Design**: Code structured into semantic modules for better understanding and maintenance
+- **⚡ Deterministic State Machine**: Each state+input combination has exactly one possible next state, ensuring predictability and debuggability
+- **🎯 Type Safety**: Leverage Rust's type system to prevent invalid state transitions at compile time
+- **🔧 Macro-Driven**: Define state machines using clean, declarative macro syntax
+- **📊 Visualization**: Automatically generate Mermaid diagrams for state machine visualization
+- **🔍 Rich Query API**: Comprehensive state machine analysis including pathfinding, reachability, and connectivity analysis
+- **📝 Documentation Generation**: Auto-generate transition tables, statistics, and complete documentation
+- **🔒 Hidden Operations**: Support underscore-prefixed inputs that remain functional but don't appear in documentation
+- **📈 Memory Efficient**: Ring buffer implementation with configurable history limits (default: 512 entries)
+- **🏗️ Modular Architecture**: Clean separation of concerns across core, instance, query, and documentation modules
+- **📦 Optional Serde Support**: Serialize and deserialize state machines with the `serde` feature
 
-## Quick Start
+## 📦 Installation
 
-### Installation and Running
+Add this to your `Cargo.toml`:
 
-```bash
-# Clone the project
-git clone <repository-url>
-cd yasm
+```toml
+[dependencies]
+yasm = "0.4.1"
 
-# Run basic demo
-cargo run --example basic_demo
-
-# Run advanced examples
-cargo run --example advanced_usage
-
-# Generate documentation
-cargo run --example generate_docs
+# For serialization support
+yasm = { version = "0.4.1", features = ["serde"] }
 ```
 
-### Define State Machine
+## 🎯 Quick Start
 
-Use the `define_state_machine!` macro to define state machines:
+### Basic Usage
 
 ```rust
 use yasm::*;
 
+// Define a simple door state machine
 mod door {
     use yasm::*;
     
@@ -62,133 +57,101 @@ mod door {
         }
     }
 }
+
+fn main() {
+    // Create state machine instance
+    let mut door = StateMachineInstance::<door::DoorStateMachine>::new();
+    
+    // Check current state
+    println!("Current state: {:?}", door.current_state()); // Closed
+    
+    // Execute transitions
+    door.transition(door::Input::OpenDoor).unwrap();
+    println!("New state: {:?}", door.current_state()); // Open
+    
+    // Check valid inputs
+    println!("Valid inputs: {:?}", door.valid_inputs()); // [CloseDoor]
+}
 ```
 
-### Using State Machine
+### Advanced Features
 
+#### History Management
 ```rust
-// Create state machine instance (default history limit: 512 entries)
-let mut door = StateMachineInstance::<door::DoorStateMachine>::new();
+// Create instance with custom history limit
+let mut door = StateMachineInstance::<door::DoorStateMachine>::with_max_history(100);
 
-// Create instance with custom history size limit
-let mut door_limited = StateMachineInstance::<door::DoorStateMachine>::with_max_history(100);
-
-// Check current state
-println!("Current state: {:?}", door.current_state()); // Closed
-
-// Check valid inputs
-println!("Valid inputs: {:?}", door.valid_inputs()); // [OpenDoor, Lock]
-
-// Execute state transition
-door.transition(door::Input::OpenDoor).unwrap();
-println!("New state: {:?}", door.current_state()); // Open
-
-// View transition history (using efficient ring buffer)
-println!("History count: {}", door.history().len());
-println!("Max history size: {}", door.max_history_size()); // 512
+// View transition history (efficient ring buffer)
+println!("History: {:?}", door.history());
+println!("Max history size: {}", door.max_history_size());
 ```
 
-### Hidden Operations (Underscore-prefixed Inputs)
-
-Inputs starting with underscore won't appear in generated documentation but remain fully functional:
-
+#### Hidden Operations
 ```rust
 define_state_machine! {
     name: ServerStateMachine,
     states: { Active, Maintenance },
-    inputs: { Maintain, Restore, _Debug, _EditDescription },
+    inputs: { Maintain, Restore, _Debug, _Log },  // _Debug and _Log are hidden
     initial: Active,
     transitions: {
         Active + Maintain => Maintenance,
         Maintenance + Restore => Active,
-        // Hidden operations: won't appear in docs but query functions work normally
+        // Hidden operations (won't appear in docs but fully functional)
         Active + _Debug => Active,
         Maintenance + _Debug => Maintenance,
-        Active + _EditDescription => Active,
-        Maintenance + _EditDescription => Maintenance
+        Active + _Log => Active,
+        Maintenance + _Log => Maintenance
     }
 }
 ```
 
-Generated documentation will only show `Maintain` and `Restore`, while `_Debug` and `_EditDescription` won't appear in state diagrams and transition tables.
-
-### Query Functions
-
+#### Query and Analysis
 ```rust
-// Query all reachable states from a given state
+// Find reachable states
 let reachable = StateMachineQuery::<door::DoorStateMachine>::reachable_states(&door::State::Closed);
-println!("States reachable from Closed: {:?}", reachable);
+println!("Reachable from Closed: {:?}", reachable);
 
-// Query all states that can reach a target state
-let leading_to = StateMachineQuery::<door::DoorStateMachine>::states_leading_to(&door::State::Locked);
-println!("States that can reach Locked: {:?}", leading_to);
+// Find paths between states
+let has_path = StateMachineQuery::<door::DoorStateMachine>::has_path(
+    &door::State::Open, 
+    &door::State::Locked
+);
+println!("Path exists: {}", has_path);
 
-// Check if there's a path between two states
-let has_path = StateMachineQuery::<door::DoorStateMachine>::has_path(&door::State::Open, &door::State::Locked);
-println!("Path from Open to Locked exists: {}", has_path);
-
-// Find shortest path between two states
-let path = StateMachineQuery::<door::DoorStateMachine>::shortest_path(&door::State::Open, &door::State::Locked);
+// Find shortest path
+let path = StateMachineQuery::<door::DoorStateMachine>::shortest_path(
+    &door::State::Open, 
+    &door::State::Locked
+);
 println!("Shortest path: {:?}", path);
-
-// Get terminal states
-let terminal_states = StateMachineQuery::<door::DoorStateMachine>::terminal_states();
-println!("Terminal states: {:?}", terminal_states);
-
-// Check strong connectivity
-let is_strongly_connected = StateMachineQuery::<door::DoorStateMachine>::is_strongly_connected();
-println!("Is strongly connected: {}", is_strongly_connected);
 ```
 
-### Generate Documentation
-
-#### Mermaid State Diagram
-
+#### Documentation Generation
 ```rust
+// Generate Mermaid diagram
 let mermaid = StateMachineDoc::<door::DoorStateMachine>::generate_mermaid();
 println!("{}", mermaid);
-```
 
-Output:
-```mermaid
-stateDiagram-v2
-    [*] --> Closed
-    Closed --> Open : OpenDoor
-    Open --> Closed : CloseDoor
-    Closed --> Locked : Lock
-    Locked --> Closed : Unlock
-```
-
-#### State Transition Table
-
-```rust
+// Generate transition table
 let table = StateMachineDoc::<door::DoorStateMachine>::generate_transition_table();
 println!("{}", table);
+
+// Generate complete documentation
+let docs = StateMachineDoc::<door::DoorStateMachine>::generate_full_documentation();
+println!("{}", docs);
 ```
 
-Output:
-```markdown
-# State Transition Table
+## 📚 Examples
 
-| Current State | Input | Next State |
-|---------------|-------|------------|
-| Closed | OpenDoor | Open |
-| Closed | Lock | Locked |
-| Open | CloseDoor | Closed |
-| Locked | Unlock | Closed |
-```
+The project includes comprehensive examples:
 
-## Examples
-
-The project includes multiple examples showcasing different use cases:
-
-### 📖 Basic Demo
+### 🎯 Basic Demo
 ```bash
 cargo run --example basic_demo
 ```
-- Door state machine and order state machine
-- Basic state transitions and queries
-- Documentation generation demo
+- Door and order state machines
+- Basic transitions and queries
+- Documentation generation
 
 ### 🚀 Advanced Usage
 ```bash
@@ -198,93 +161,116 @@ cargo run --example advanced_usage
 - Game character state machine
 - State machine analysis tools
 
-### 📚 Documentation Generation
+### 🔧 Feature Demo
+```bash
+cargo run --example feature_demo
+```
+- Hidden operations demonstration
+- History management features
+- Performance optimizations
+
+### 📖 Documentation Generation
 ```bash
 cargo run --example generate_docs
 ```
-- Automatically generate Markdown documentation
-- Output Mermaid diagram files
-- Create complete project documentation
+- Auto-generate project documentation
+- Create Mermaid diagram files
+- Generate transition tables
 
-For more example details, see [examples/README.md](examples/README.md).
-
-## Running Tests
-
-```bash
-cargo test
-```
-
-## Project Structure
+## 🏗️ Architecture
 
 ```
 yasm/
 ├── src/
-│   └── lib.rs          # Core library implementation
-├── examples/
-│   ├── README.md       # Examples documentation
-│   ├── basic_demo.rs   # Basic functionality demo
-│   ├── advanced_usage.rs   # Advanced usage examples
-│   └── generate_docs.rs    # Documentation generation tool
-├── docs/               # Generated documentation
-├── Cargo.toml
-└── README.md
+│   ├── lib.rs          # Main library entry point with comprehensive tests
+│   ├── core.rs         # StateMachine trait and core type definitions
+│   ├── instance.rs     # StateMachineInstance implementation with history management
+│   ├── query.rs        # StateMachineQuery analysis and pathfinding algorithms
+│   ├── doc.rs          # StateMachineDoc documentation generation utilities
+│   └── macros.rs       # define_state_machine! macro implementation
+├── examples/           # Comprehensive examples and demos
+└── docs/              # Auto-generated documentation
 ```
 
-## API Documentation
+## 🔧 API Reference
 
-### Core Traits
+### Core Components
 
-#### `StateMachine`
-Core trait defining state machine behavior, including states, inputs, and transition logic.
+#### `StateMachine` Trait
+Defines the core behavior of deterministic state machines:
+- `states()` - Get all possible states
+- `inputs()` - Get all possible inputs  
+- `next_state()` - Deterministic state transition logic
+- `valid_inputs()` - Get valid inputs for a state
 
 #### `StateMachineInstance<SM>`
-Runtime instance of a state machine that can execute transitions and record history.
-
-Main methods:
-- `new()`: Create new instance (default history limit: 512 entries)
-- `with_max_history(size)`: Create instance with custom history size limit
-- `current_state()`: Get current state
-- `valid_inputs()`: Get valid inputs for current state
-- `can_accept(input)`: Check if input is valid
-- `transition(input)`: Execute state transition
-- `history()`: Get transition history (ring buffer)
-- `max_history_size()`: Get maximum history size
-
-### Query Tools
+Runtime state machine instance with history tracking:
+- `new()` - Create with default history (512 entries)
+- `with_max_history(size)` - Create with custom history limit
+- `transition(input)` - Execute state transition
+- `current_state()` - Get current state
+- `valid_inputs()` - Get valid inputs for current state
+- `history()` - Access transition history (ring buffer)
 
 #### `StateMachineQuery<SM>`
-Utility class providing state machine query functionality.
-
-Main methods:
-- `reachable_states(from)`: Get all states reachable from specified state
-- `states_leading_to(target)`: Get all states that can reach target state
-- `has_path(from, to)`: Check if path exists between two states
-
-### Documentation Generation
+State machine analysis utilities:
+- `reachable_states(from)` - Find all reachable states
+- `states_leading_to(target)` - Find states that can reach target
+- `has_path(from, to)` - Check if path exists
+- `shortest_path(from, to)` - Find shortest path between states
+- `terminal_states()` - Find states with no outgoing transitions
+- `is_strongly_connected()` - Check graph connectivity
 
 #### `StateMachineDoc<SM>`
-Utility class for generating state machine documentation.
+Documentation generation utilities:
+- `generate_mermaid()` - Create Mermaid state diagram
+- `generate_transition_table()` - Create Markdown transition table
+- `generate_statistics()` - Generate state machine statistics
+- `generate_full_documentation()` - Complete documentation bundle
 
-Main methods:
-- `generate_mermaid()`: Generate Mermaid format state diagram
-- `generate_transition_table()`: Generate Markdown format state transition table
+## 🎨 Design Principles
 
-## Design Principles
+1. **Deterministic First**: Every state+input combination maps to exactly one next state
+2. **Type Safety**: Compile-time prevention of invalid state transitions
+3. **Zero-Cost Abstractions**: Efficient macro-generated code with minimal runtime overhead
+4. **Memory Efficiency**: Ring buffer history management with configurable limits
+5. **Developer Experience**: Clean APIs, comprehensive documentation, and helpful error messages
+6. **Extensibility**: Modular design allows easy extension and customization
 
-1. **MVP First**: Current version focuses on core functionality while keeping it simple and easy to use
-2. **Type Safety**: Leverage Rust's type system to prevent invalid state transitions
-3. **Extensible**: Design allows for future additions (non-deterministic transitions, conditional transitions, etc.)
-4. **Visualization**: Built-in documentation generation for better understanding and debugging
-5. **Performance Consideration**: Use ring buffer and default history limits for efficient performance
+## 🚀 Performance Features
 
-## Future Plans
+- **Ring Buffer History**: Automatic memory management for transition history
+- **Compile-Time Generation**: Macro-generated code with optimal performance
+- **Minimal Allocations**: Efficient data structures and memory usage
+- **Configurable Limits**: Customize memory usage based on your needs
 
-- [ ] Support DSL syntax for defining state machines
-- [ ] Support conditional transitions and guards
-- [ ] Support state machine composition and nesting
-- [ ] Support more output formats (GraphViz, PlantUML, etc.)
-- [ ] Support state machine verification and analysis tools
+## 🔄 Roadmap
 
-## License
+- [ ] Conditional transitions with guards
+- [ ] Additional export formats (GraphViz, PlantUML)
+- [ ] WebAssembly support
 
-MIT License
+## 🧪 Testing
+
+```bash
+# Run all tests
+cargo test
+
+# Run tests with features
+cargo test --features serde
+
+# Run specific test
+cargo test test_deterministic_state_machine_basic
+```
+
+## 📄 License
+
+MIT License. See [LICENSE](LICENSE) for details.
+
+## 🤝 Contributing
+
+Contributions welcome! Please read our contributing guidelines and submit pull requests to our repository.
+
+---
+
+Built with ❤️ for the Rust community
