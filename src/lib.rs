@@ -50,6 +50,7 @@
 //! - [`macros`][]: Macro definitions
 
 // Module declarations
+pub mod callbacks;
 pub mod core;
 pub mod doc;
 pub mod instance;
@@ -57,6 +58,7 @@ pub mod macros;
 pub mod query;
 
 // Re-export public interface
+pub use callbacks::CallbackRegistry;
 pub use core::StateMachine;
 pub use doc::StateMachineDoc;
 pub use instance::StateMachineInstance;

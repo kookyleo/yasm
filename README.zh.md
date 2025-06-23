@@ -6,24 +6,20 @@
 [![Documentation](https://docs.rs/yasm/badge.svg)](https://docs.rs/yasm)
 [![License](https://img.shields.io/crates/l/yasm.svg)](https://github.com/kookyleo/yasm#license)
 
-一个现代、高效的**确定性**有限状态机库。
+现代、高效的**确定性**有限状态机库，专为 Rust 2024 edition 设计。
 
-## 🚀 特性
+## ✨ 核心特性
 
-- **⚡ 确定性状态机**: 每个状态+输入组合都有唯一确定的下一个状态，确保可预测性和可调试性
-- **🎯 类型安全**: 利用 Rust 的类型系统在编译时防止无效的状态转换
-- **🔧 宏驱动**: 使用简洁的声明式宏语法定义状态机
-- **📊 可视化**: 自动生成 Mermaid 图表进行状态机可视化
-- **🔍 丰富的查询 API**: 全面的状态机分析功能，包括路径查找、可达性和连通性分析
-- **📝 文档生成**: 自动生成转换表、统计信息和完整文档
-- **🔒 隐藏操作**: 支持下划线前缀的输入，功能完整但不出现在文档中
-- **📈 内存高效**: 环形缓冲区实现，可配置历史记录限制（默认: 512 条）
-- **🏗️ 模块化架构**: 核心、实例、查询和文档模块的清晰分离
-- **📦 可选 Serde 支持**: 通过 `serde` 特性支持状态机序列化和反序列化
+- **⚡ 确定性**: 一个状态 + 输入 = 唯一下一状态（保证）
+- **🔒 类型安全**: 编译时防止无效状态转换
+- **🚀 回调系统**: 通过灵活的事件钩子响应状态变化
+- **🔧 宏驱动**: 简洁的声明式状态机定义语法
+- **📊 可视化**: 自动生成 Mermaid 图表和文档
+- **🔍 分析工具**: 路径查找、可达性和连通性分析
+- **📈 内存高效**: 可配置历史记录的环形缓冲区（默认: 512）
+- **📦 可选 Serde**: 通过 `serde` 特性支持序列化
 
 ## 📦 安装
-
-在你的 `Cargo.toml` 中添加：
 
 ```toml
 [dependencies]
@@ -33,222 +29,269 @@ yasm = "0.4.1"
 yasm = { version = "0.4.1", features = ["serde"] }
 ```
 
-## 🎯 快速开始
+## 🚀 快速开始
 
-### 基本用法
+### 定义状态机
 
 ```rust
 use yasm::*;
 
-// 定义一个简单的门状态机
-mod door {
-    use yasm::*;
-    
-    define_state_machine! {
-        name: DoorStateMachine,
-        states: { Closed, Open, Locked },
-        inputs: { OpenDoor, CloseDoor, Lock, Unlock },
-        initial: Closed,
-        transitions: {
-            Closed + OpenDoor => Open,
-            Open + CloseDoor => Closed,
-            Closed + Lock => Locked,
-            Locked + Unlock => Closed
-        }
+define_state_machine! {
+    name: DoorStateMachine,
+    states: { Closed, Open, Locked },
+    inputs: { OpenDoor, CloseDoor, Lock, Unlock },
+    initial: Closed,
+    transitions: {
+        Closed + OpenDoor => Open,
+        Open + CloseDoor => Closed,
+        Closed + Lock => Locked,
+        Locked + Unlock => Closed
     }
 }
+```
 
+### 基本用法
+
+```rust
 fn main() {
-    // 创建状态机实例
-    let mut door = StateMachineInstance::<door::DoorStateMachine>::new();
+    let mut door = StateMachineInstance::<DoorStateMachine>::new();
     
-    // 查看当前状态
     println!("当前状态: {:?}", door.current_state()); // Closed
     
-    // 执行状态转换
-    door.transition(door::Input::OpenDoor).unwrap();
-    println!("新状态: {:?}", door.current_state()); // Open
+    door.transition(Input::OpenDoor).unwrap();
+    println!("开门后: {:?}", door.current_state()); // Open
     
-    // 查看有效输入
+    // 查看下一步可能的输入
     println!("有效输入: {:?}", door.valid_inputs()); // [CloseDoor]
 }
 ```
 
-### 高级特性
+## 🔥 核心功能
 
-#### 历史记录管理
+### 1. 回调系统
+
+通过灵活的回调钩子响应状态机事件：
+
 ```rust
-// 创建具有自定义历史记录限制的实例
-let mut door = StateMachineInstance::<door::DoorStateMachine>::with_max_history(100);
+let mut door = StateMachineInstance::<DoorStateMachine>::new();
 
-// 查看转换历史（高效的环形缓冲区）
-println!("历史记录: {:?}", door.history());
-println!("最大历史记录大小: {}", door.max_history_size());
+// 响应特定状态进入
+door.on_state_entry(State::Open, |state| {
+    println!("门已打开！开启照明系统...");
+});
+
+// 响应特定转换
+door.on_transition(State::Closed, Input::Lock, |from, input, to| {
+    println!("安全系统激活: {from:?} --{input:?}--> {to:?}");
+});
+
+// 全局监控
+door.on_any_transition(|from, input, to| {
+    println!("状态变化: {from:?} → {to:?}");
+});
+
+// 现在所有转换都会触发回调
+door.transition(Input::OpenDoor).unwrap(); // 触发回调
 ```
 
-#### 隐藏操作
+### 2. 查询与分析
+
+分析状态机结构：
+
+```rust
+// 查找可达状态
+let reachable = StateMachineQuery::<DoorStateMachine>::reachable_states(&State::Closed);
+println!("从 Closed 可达: {reachable:?}");
+
+// 检查连通性
+let has_path = StateMachineQuery::<DoorStateMachine>::has_path(
+    &State::Open, 
+    &State::Locked
+);
+println!("Open 能到达 Locked: {has_path}");
+
+// 查找最短路径
+if let Some(path) = StateMachineQuery::<DoorStateMachine>::shortest_path(
+    &State::Open, 
+    &State::Locked
+) {
+    println!("最短路径: {path:?}");
+}
+```
+
+### 3. 文档生成
+
+自动生成可视化文档：
+
+```rust
+// Mermaid 状态图
+let diagram = StateMachineDoc::<DoorStateMachine>::generate_mermaid();
+println!("{diagram}");
+
+// 转换表
+let table = StateMachineDoc::<DoorStateMachine>::generate_transition_table();
+println!("{table}");
+```
+
+### 4. 历史记录管理
+
+通过高效环形缓冲区跟踪转换：
+
+```rust
+// 自定义历史记录大小
+let mut door = StateMachineInstance::<DoorStateMachine>::with_max_history(100);
+
+// 执行一些转换
+door.transition(Input::OpenDoor).unwrap();
+door.transition(Input::CloseDoor).unwrap();
+
+// 查看历史记录
+println!("历史记录: {:?}", door.history());
+println!("历史记录长度: {}", door.history_len());
+```
+
+## 🛠️ 高级特性
+
+### 隐藏操作
+
+使用下划线前缀的输入进行内部操作，不会出现在文档中：
+
 ```rust
 define_state_machine! {
     name: ServerStateMachine,
     states: { Active, Maintenance },
-    inputs: { Maintain, Restore, _Debug, _Log },  // _Debug 和 _Log 是隐藏的
+    inputs: { Maintain, Restore, _Debug, _AdminReset }, // 隐藏输入
     initial: Active,
     transitions: {
         Active + Maintain => Maintenance,
         Maintenance + Restore => Active,
-        // 隐藏操作（不会出现在文档中但功能完整）
+        // 隐藏转换（功能完整但不记录在文档中）
         Active + _Debug => Active,
-        Maintenance + _Debug => Maintenance,
-        Active + _Log => Active,
-        Maintenance + _Log => Maintenance
+        Maintenance + _AdminReset => Active
     }
 }
 ```
 
-#### 查询和分析
+### 多种回调类型
+
+回调系统支持各种事件类型：
+
 ```rust
-// 查找可达状态
-let reachable = StateMachineQuery::<door::DoorStateMachine>::reachable_states(&door::State::Closed);
-println!("从 Closed 可达: {:?}", reachable);
+let mut workflow = StateMachineInstance::<WorkflowStateMachine>::new();
 
-// 查找状态间路径
-let has_path = StateMachineQuery::<door::DoorStateMachine>::has_path(
-    &door::State::Open, 
-    &door::State::Locked
-);
-println!("路径存在: {}", has_path);
+// 状态特定回调
+workflow.on_state_entry(State::Review, |state| { /* ... */ });
+workflow.on_state_exit(State::Draft, |state| { /* ... */ });
 
-// 查找最短路径
-let path = StateMachineQuery::<door::DoorStateMachine>::shortest_path(
-    &door::State::Open, 
-    &door::State::Locked
-);
-println!("最短路径: {:?}", path);
+// 转换特定回调  
+workflow.on_transition(State::Draft, Input::Submit, |from, input, to| { /* ... */ });
+
+// 全局回调
+workflow.on_any_state_entry(|state| { /* ... */ });
+workflow.on_any_state_exit(|state| { /* ... */ });
+workflow.on_any_transition(|from, input, to| { /* ... */ });
+
+// 回调管理
+println!("回调总数: {}", workflow.callback_count());
+workflow.clear_callbacks();
 ```
 
-#### 文档生成
+### 特性标志
+
+#### Serde 支持
+
+通过 `serde` 特性启用序列化：
+
+```toml
+[dependencies]
+yasm = { version = "0.4.1", features = ["serde"] }
+```
+
 ```rust
-// 生成 Mermaid 图表
-let mermaid = StateMachineDoc::<door::DoorStateMachine>::generate_mermaid();
-println!("{}", mermaid);
-
-// 生成转换表
-let table = StateMachineDoc::<door::DoorStateMachine>::generate_transition_table();
-println!("{}", table);
-
-// 生成完整文档
-let docs = StateMachineDoc::<door::DoorStateMachine>::generate_full_documentation();
-println!("{}", docs);
+#[cfg(feature = "serde")]
+{
+    let state = State::Open;
+    let json = serde_json::to_string(&state).unwrap();
+    let restored: State = serde_json::from_str(&json).unwrap();
+}
 ```
 
 ## 📚 示例
 
-项目包含全面的示例：
+运行全面的示例：
 
-### 🎯 基础演示
 ```bash
+# 基本用法模式
 cargo run --example basic_demo
-```
-- 门和订单状态机
-- 基本转换和查询
-- 文档生成
 
-### 🚀 高级用法
-```bash
+# 高级特性和分析
 cargo run --example advanced_usage
-```
-- 网络连接状态机
-- 游戏角色状态机
-- 状态机分析工具
 
-### 🔧 特性演示
-```bash
-cargo run --example feature_demo
-```
-- 隐藏操作演示
-- 历史记录管理特性
-- 性能优化
+# 回调系统演示
+cargo run --example callback_demo
 
-### 📖 文档生成
-```bash
+# 简洁回调示例
+cargo run --example simple_callback_demo
+
+# 文档生成
 cargo run --example generate_docs
 ```
-- 自动生成项目文档
-- 创建 Mermaid 图表文件
-- 生成转换表
 
 ## 🏗️ 架构
 
 ```
-yasm/
-├── src/
-│   ├── lib.rs          # 主库入口点，包含全面测试
-│   ├── core.rs         # StateMachine trait 和核心类型定义
-│   ├── instance.rs     # StateMachineInstance 实现，包含历史记录管理
-│   ├── query.rs        # StateMachineQuery 分析和路径查找算法
-│   ├── doc.rs          # StateMachineDoc 文档生成工具
-│   └── macros.rs       # define_state_machine! 宏实现
-├── examples/           # 全面的示例和演示
-└── docs/              # 自动生成的文档
+src/
+├── lib.rs          # 公共 API 和全面测试
+├── core.rs         # StateMachine trait 定义
+├── instance.rs     # StateMachineInstance 包含历史记录和回调
+├── callbacks.rs    # 回调注册表和事件系统
+├── query.rs        # 分析算法（路径、可达性）
+├── doc.rs          # 文档生成工具
+└── macros.rs       # define_state_machine! 宏实现
 ```
 
-## 🔧 API 参考
+## 🔧 API 概览
 
-### 核心组件
+### 核心类型
 
-#### `StateMachine` Trait
-定义确定性状态机的核心行为：
-- `states()` - 获取所有可能状态
-- `inputs()` - 获取所有可能输入
-- `next_state()` - 确定性状态转换逻辑
-- `valid_inputs()` - 获取状态的有效输入
+- **`StateMachine`** - 定义状态机行为的核心 trait
+- **`StateMachineInstance<SM>`** - 包含状态和历史记录的运行时实例
+- **`CallbackRegistry<SM>`** - 事件回调管理系统
+- **`StateMachineQuery<SM>`** - 分析和路径查找工具
+- **`StateMachineDoc<SM>`** - 文档生成工具
 
-#### `StateMachineInstance<SM>`
-带历史记录跟踪的运行时状态机实例：
-- `new()` - 创建默认历史记录实例（512 条）
-- `with_max_history(size)` - 创建自定义历史记录限制的实例
-- `transition(input)` - 执行状态转换
-- `current_state()` - 获取当前状态
-- `valid_inputs()` - 获取当前状态的有效输入
-- `history()` - 访问转换历史（环形缓冲区）
+### 关键方法
 
-#### `StateMachineQuery<SM>`
-状态机分析工具：
-- `reachable_states(from)` - 查找所有可达状态
-- `states_leading_to(target)` - 查找能到达目标的状态
-- `has_path(from, to)` - 检查路径是否存在
-- `shortest_path(from, to)` - 查找状态间最短路径
-- `terminal_states()` - 查找没有出口转换的状态
-- `is_strongly_connected()` - 检查图的连通性
+```rust
+// 实例管理
+let mut sm = StateMachineInstance::<MyStateMachine>::new();
+let mut sm = StateMachineInstance::<MyStateMachine>::with_max_history(256);
 
-#### `StateMachineDoc<SM>`
-文档生成工具：
-- `generate_mermaid()` - 创建 Mermaid 状态图
-- `generate_transition_table()` - 创建 Markdown 转换表
-- `generate_statistics()` - 生成状态机统计信息
-- `generate_full_documentation()` - 完整文档包
+// 状态操作
+sm.transition(input)?;           // 执行转换
+sm.current_state();              // 获取当前状态
+sm.valid_inputs();               // 获取有效输入
+sm.can_accept(&input);           // 检查输入是否有效
 
-## 🎨 设计原则
+// 回调注册  
+sm.on_state_entry(state, callback);
+sm.on_transition(from, input, callback);
+sm.on_any_transition(callback);
 
-1. **确定性优先**: 每个状态+输入组合映射到唯一的下一个状态
-2. **类型安全**: 编译时防止无效状态转换
-3. **零成本抽象**: 高效的宏生成代码，最小运行时开销
-4. **内存高效**: 环形缓冲区历史记录管理，可配置限制
-5. **开发者体验**: 清晰的 API、全面的文档和有用的错误信息
-6. **可扩展性**: 模块化设计允许轻松扩展和定制
+// 历史记录访问
+sm.history();                    // 获取转换历史记录
+sm.history_len();                // 历史记录长度
+sm.reset();                      // 重置到初始状态
 
-## 🚀 性能特性
+// 分析
+StateMachineQuery::<SM>::reachable_states(&from);
+StateMachineQuery::<SM>::shortest_path(&from, &to);
+StateMachineQuery::<SM>::has_path(&from, &to);
 
-- **环形缓冲区历史**: 转换历史的自动内存管理
-- **编译时生成**: 宏生成的代码具有最佳性能
-- **最少分配**: 高效的数据结构和内存使用
-- **可配置限制**: 根据需要自定义内存使用
-
-## 🔄 路线图
-
-- [ ] 带守卫的条件转换
-- [ ] 更多导出格式（GraphViz、PlantUML）
-- [ ] WebAssembly 支持
+// 文档生成
+StateMachineDoc::<SM>::generate_mermaid();
+StateMachineDoc::<SM>::generate_transition_table();
+```
 
 ## 🧪 测试
 
@@ -256,20 +299,16 @@ yasm/
 # 运行所有测试
 cargo test
 
-# 运行带特性的测试
+# 测试带特性
 cargo test --features serde
 
-# 运行特定测试
-cargo test test_deterministic_state_machine_basic
+# 测试特定功能
+cargo test callbacks
 ```
 
 ## 📄 许可证
 
-MIT 许可证。详情请见 [LICENSE](LICENSE)。
-
-## 🤝 贡献
-
-欢迎贡献！请阅读我们的贡献指南并向我们的仓库提交 pull request。
+MIT 许可证。详见 [LICENSE](LICENSE)。
 
 ---
 

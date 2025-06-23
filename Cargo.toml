@@ -33,3 +33,7 @@ path = "examples/advanced_usage.rs"
 [[example]]
 name = "generate_docs"
 path = "examples/generate_docs.rs"
+
+[[example]]
+name = "callback_demo"
+path = "examples/callback_demo.rs"
