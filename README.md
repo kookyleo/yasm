@@ -280,7 +280,6 @@ Main methods:
 ## Future Plans
 
 - [ ] Support DSL syntax for defining state machines
-- [ ] Support non-deterministic state transitions
 - [ ] Support conditional transitions and guards
 - [ ] Support state machine composition and nesting
 - [ ] Support more output formats (GraphViz, PlantUML, etc.)
