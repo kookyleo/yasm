@@ -289,6 +289,43 @@ mod tests {
         assert!(full_doc.contains("State Diagram"));
     }
 
+    #[test]
+    fn test_state_from_str() {
+        // Test valid state strings
+        let red_state = State::from("Red");
+        assert_eq!(red_state, State::Red);
+
+        let yellow_state = State::from("Yellow");
+        assert_eq!(yellow_state, State::Yellow);
+
+        let green_state = State::from("Green");
+        assert_eq!(green_state, State::Green);
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid state")]
+    fn test_state_from_str_invalid() {
+        // Test invalid state string - should panic
+        let _ = State::from("InvalidState");
+    }
+
+    #[test]
+    fn test_input_from_str() {
+        // Test valid input strings
+        let timer_input = Input::from("Timer");
+        assert_eq!(timer_input, Input::Timer);
+
+        let emergency_input = Input::from("Emergency");
+        assert_eq!(emergency_input, Input::Emergency);
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid input")]
+    fn test_input_from_str_invalid() {
+        // Test invalid input string - should panic
+        let _ = Input::from("InvalidInput");
+    }
+
     #[cfg(feature = "serde")]
     #[test]
     fn test_serde_serialization() {

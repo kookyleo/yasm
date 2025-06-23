@@ -29,10 +29,28 @@ macro_rules! __define_state_machine_common {
             }
         }
 
+        impl From<&str> for State {
+            fn from(s: &str) -> Self {
+                match s {
+                    $(stringify!($state) => State::$state,)*
+                    _ => panic!("Invalid state: {}", s),
+                }
+            }
+        }
+
         impl std::fmt::Display for Input {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 match self {
                     $(Input::$input => write!(f, stringify!($input)),)*
+                }
+            }
+        }
+
+        impl From<&str> for Input {
+            fn from(s: &str) -> Self {
+                match s {
+                    $(stringify!($input) => Input::$input,)*
+                    _ => panic!("Invalid input: {}", s),
                 }
             }
         }
