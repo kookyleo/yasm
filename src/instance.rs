@@ -98,7 +98,8 @@ impl<SM: StateMachine> StateMachineInstance<SM> {
                 }
 
                 // Trigger transition callbacks
-                self.callback_registry.trigger_transition(&old_state, &input, &new_state);
+                self.callback_registry
+                    .trigger_transition(&old_state, &input, &new_state);
 
                 // Record transition history
                 self.history.push_back((old_state, input));
@@ -210,7 +211,8 @@ impl<SM: StateMachine> StateMachineInstance<SM> {
     where
         F: Fn(&SM::State, &SM::Input, &SM::State) + Send + Sync + 'static,
     {
-        self.callback_registry.on_transition(from_state, input, callback);
+        self.callback_registry
+            .on_transition(from_state, input, callback);
     }
 
     /// Register a global callback that triggers on any state entry

@@ -1,5 +1,5 @@
-use yasm::*;
 use std::sync::{Arc, Mutex};
+use yasm::*;
 
 // Define a simple workflow state machine for demonstration
 mod workflow {
@@ -39,45 +39,36 @@ fn demo_state_callbacks() {
     println!("{}", "-".repeat(34));
 
     let mut workflow = StateMachineInstance::<workflow::WorkflowStateMachine>::new();
-    
+
     // Shared counter for tracking callback executions
     let entry_counter = Arc::new(Mutex::new(0));
     let exit_counter = Arc::new(Mutex::new(0));
 
     // Register state entry callbacks
     let entry_counter_clone = Arc::clone(&entry_counter);
-    workflow.on_state_entry(
-        workflow::State::Review,
-        move |state| {
-            println!("📥 Entering Review state: {state:?}");
-            println!("   - Notifying reviewers...");
-            println!("   - Setting up review deadline...");
-            *entry_counter_clone.lock().unwrap() += 1;
-        }
-    );
+    workflow.on_state_entry(workflow::State::Review, move |state| {
+        println!("📥 Entering Review state: {state:?}");
+        println!("   - Notifying reviewers...");
+        println!("   - Setting up review deadline...");
+        *entry_counter_clone.lock().unwrap() += 1;
+    });
 
     let entry_counter_clone = Arc::clone(&entry_counter);
-    workflow.on_state_entry(
-        workflow::State::Published,
-        move |state| {
-            println!("🚀 Entering Published state: {state:?}");
-            println!("   - Sending publication notifications...");
-            println!("   - Updating search index...");
-            *entry_counter_clone.lock().unwrap() += 1;
-        }
-    );
+    workflow.on_state_entry(workflow::State::Published, move |state| {
+        println!("🚀 Entering Published state: {state:?}");
+        println!("   - Sending publication notifications...");
+        println!("   - Updating search index...");
+        *entry_counter_clone.lock().unwrap() += 1;
+    });
 
     // Register state exit callbacks
     let exit_counter_clone = Arc::clone(&exit_counter);
-    workflow.on_state_exit(
-        workflow::State::Draft,
-        move |state| {
-            println!("📤 Exiting Draft state: {state:?}");
-            println!("   - Saving draft changes...");
-            println!("   - Cleaning up temporary files...");
-            *exit_counter_clone.lock().unwrap() += 1;
-        }
-    );
+    workflow.on_state_exit(workflow::State::Draft, move |state| {
+        println!("📤 Exiting Draft state: {state:?}");
+        println!("   - Saving draft changes...");
+        println!("   - Cleaning up temporary files...");
+        *exit_counter_clone.lock().unwrap() += 1;
+    });
 
     // Execute workflow transitions
     println!("\nInitial state: {:?}", workflow.current_state());
@@ -95,8 +86,14 @@ fn demo_state_callbacks() {
     println!("Current state: {:?}", workflow.current_state());
 
     println!("\n=== Callback execution summary ===");
-    println!("Entry callbacks triggered: {}", *entry_counter.lock().unwrap());
-    println!("Exit callbacks triggered: {}", *exit_counter.lock().unwrap());
+    println!(
+        "Entry callbacks triggered: {}",
+        *entry_counter.lock().unwrap()
+    );
+    println!(
+        "Exit callbacks triggered: {}",
+        *exit_counter.lock().unwrap()
+    );
 }
 
 fn demo_transition_callbacks() {
@@ -104,7 +101,7 @@ fn demo_transition_callbacks() {
     println!("{}", "-".repeat(29));
 
     let mut workflow = StateMachineInstance::<workflow::WorkflowStateMachine>::new();
-    
+
     // Register transition-specific callbacks
     workflow.on_transition(
         workflow::State::Draft,
@@ -114,7 +111,7 @@ fn demo_transition_callbacks() {
             println!("   - Validating submission requirements...");
             println!("   - Creating review task...");
             println!("   - Assigning to review queue...");
-        }
+        },
     );
 
     workflow.on_transition(
@@ -125,7 +122,7 @@ fn demo_transition_callbacks() {
             println!("   - Recording approval timestamp...");
             println!("   - Updating approval metrics...");
             println!("   - Preparing for publication...");
-        }
+        },
     );
 
     workflow.on_transition(
@@ -136,7 +133,7 @@ fn demo_transition_callbacks() {
             println!("   - Logging rejection reason...");
             println!("   - Notifying author of feedback...");
             println!("   - Resetting to draft mode...");
-        }
+        },
     );
 
     // Execute workflow with transitions
@@ -162,7 +159,7 @@ fn demo_global_callbacks() {
     println!("{}", "-".repeat(25));
 
     let mut workflow = StateMachineInstance::<workflow::WorkflowStateMachine>::new();
-    
+
     // Shared counters for tracking global events
     let transition_count = Arc::new(Mutex::new(0));
     let state_change_count = Arc::new(Mutex::new(0));
@@ -213,9 +210,15 @@ fn demo_global_callbacks() {
     }
 
     println!("\n=== Global callback summary ===");
-    println!("Total transitions monitored: {}", *transition_count.lock().unwrap());
-    println!("Total state entries monitored: {}", *state_change_count.lock().unwrap());
-    
+    println!(
+        "Total transitions monitored: {}",
+        *transition_count.lock().unwrap()
+    );
+    println!(
+        "Total state entries monitored: {}",
+        *state_change_count.lock().unwrap()
+    );
+
     println!("\nCallback registry stats:");
     println!("Total registered callbacks: {}", workflow.callback_count());
-} 
+}

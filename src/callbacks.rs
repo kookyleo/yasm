@@ -9,11 +9,8 @@ pub type StateExitCallback<SM> = Box<dyn Fn(&<SM as StateMachine>::State) + Send
 
 /// Callback function type for transition
 pub type TransitionCallback<SM> = Box<
-    dyn Fn(
-            &<SM as StateMachine>::State,
-            &<SM as StateMachine>::Input,
-            &<SM as StateMachine>::State,
-        ) + Send
+    dyn Fn(&<SM as StateMachine>::State, &<SM as StateMachine>::Input, &<SM as StateMachine>::State)
+        + Send
         + Sync,
 >;
 
@@ -29,19 +26,19 @@ pub type TransitionKey<SM> = (<SM as StateMachine>::State, <SM as StateMachine>:
 pub struct CallbackRegistry<SM: StateMachine> {
     /// State entry callbacks mapped by state
     state_entry_callbacks: HashMap<<SM as StateMachine>::State, Vec<StateEntryCallback<SM>>>,
-    
+
     /// State exit callbacks mapped by state
     state_exit_callbacks: HashMap<<SM as StateMachine>::State, Vec<StateExitCallback<SM>>>,
-    
+
     /// Transition callbacks mapped by (from_state, input) pairs
     transition_callbacks: HashMap<TransitionKey<SM>, Vec<TransitionCallback<SM>>>,
-    
+
     /// Global callbacks that trigger on any state entry
     global_entry_callbacks: Vec<StateEntryCallback<SM>>,
-    
+
     /// Global callbacks that trigger on any state exit
     global_exit_callbacks: Vec<StateExitCallback<SM>>,
-    
+
     /// Global callbacks that trigger on any transition
     global_transition_callbacks: Vec<TransitionCallback<SM>>,
 }
@@ -218,9 +215,20 @@ impl<SM: StateMachine> CallbackRegistry<SM> {
 
     /// Get the number of registered callbacks
     pub fn callback_count(&self) -> usize {
-        self.state_entry_callbacks.values().map(|v| v.len()).sum::<usize>()
-            + self.state_exit_callbacks.values().map(|v| v.len()).sum::<usize>()
-            + self.transition_callbacks.values().map(|v| v.len()).sum::<usize>()
+        self.state_entry_callbacks
+            .values()
+            .map(|v| v.len())
+            .sum::<usize>()
+            + self
+                .state_exit_callbacks
+                .values()
+                .map(|v| v.len())
+                .sum::<usize>()
+            + self
+                .transition_callbacks
+                .values()
+                .map(|v| v.len())
+                .sum::<usize>()
             + self.global_entry_callbacks.len()
             + self.global_exit_callbacks.len()
             + self.global_transition_callbacks.len()
@@ -282,4 +290,4 @@ mod tests {
         assert!(registry.callback_count() > 0);
         assert_eq!(registry.callback_count(), 2); // 1 state-specific + 1 global
     }
-} 
+}

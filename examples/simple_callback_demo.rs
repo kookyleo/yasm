@@ -58,5 +58,8 @@ fn main() {
     println!("\n=== Unlocking door ===");
     door.transition(door::Input::Unlock).unwrap();
 
-    println!("\n✨ Demo completed! Total callbacks registered: {}", door.callback_count());
-} 
+    println!(
+        "\n✨ Demo completed! Total callbacks registered: {}",
+        door.callback_count()
+    );
+}
